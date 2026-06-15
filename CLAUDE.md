@@ -14,3 +14,6 @@ npm run lint         # ESLint
 - Shared Supabase mit GoCreate (Port 8010)
 - Domain: (noch nicht zugewiesen)
 - GitHub: Godelmann/Godelmann-Chatbot
+## Doku-Pflege (PFLICHT)
+
+`docs/BACKLOG.md` ist der Release-/Feature-Log dieses Frontends. **Regel:** Der `> Stand:`-Kopf MUSS die aktuelle `package.json`-Version nennen, und jedes gelieferte Release wird dort nachgetragen — nicht nur CR-Status. Der `/do-everything`-Lauf erzwingt das via **Frontend-Release-Sync-Check** (Audit `package.json` ↔ BACKLOG-Kopf; warnt auch, wenn ein Frontend gar kein BACKLOG hat). Memory: `feedback_frontend_backlog_version_sync`.
