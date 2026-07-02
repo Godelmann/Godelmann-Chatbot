@@ -12,8 +12,8 @@
 
 ## Audit 2026-07-02 (Multi-Agent, verifiziert)
 
-> Multi-Agent-Audit (Repo + Live Test/Prod). **Detail je Finding: eigene `docs/FINDING-<ID>.md`** (verlinkt).
-> Ergebnis: **6 Findings** — P1: 0 · P2: 3 · P3: 3. Erledigt: **0/6** (Stand 2026-07-02).
+> Multi-Agent-Audit (Repo + Live Test/Prod, 2 Pässe). **Detail je Finding: eigene `docs/FINDING-<ID>.md`** (verlinkt).
+> Ergebnis: **7 Findings** — P1: 0 · P2: 3 · P3: 4. Erledigt: **0/7** (Stand 2026-07-02).
 
 ### 🟠 P2
 
@@ -30,6 +30,7 @@
 | [CHATBOT-P3-01](FINDING-CHATBOT-P3-01.md) | README.md ist unveränderter Vite-Template-Text statt projektspezifisch | ⬚ offen |
 | [CHATBOT-P3-02](FINDING-CHATBOT-P3-02.md) | index.html: lang="de" + deutscher Brand-Titel statt lang="en"/Platzhalter | ⬚ offen |
 | [CHATBOT-P3-03](FINDING-CHATBOT-P3-03.md) | /projects/CLAUDE.md Submodule-Liste um godelmann-chatbot + frahcs-mobilien ergaenzen | ⬚ offen |
+| [CHATBOT-P3-04](FINDING-CHATBOT-P3-04.md) | dgx-Proxy user_id-Spoofing nur durch ENV SPASS_JWT_VERIFY=enforce verhindert — Fail-open-Default (JwtVerifyMode::Off) | ⬚ offen |
 
 ---
 
