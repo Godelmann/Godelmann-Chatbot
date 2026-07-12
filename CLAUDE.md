@@ -17,7 +17,7 @@ npm run lint         # ESLint
 - Kein React/Tailwind/shadcn — Styling im Shadow DOM, Theming über CSS-Custom-Properties
 - Backend: `godelmann-chatbot-server` (spass `examples/`, test-PORT 3011) — `POST /api/chat` (SSE) + `GET /altcha/challenge`
 - Dev-Port: 5011 (explizit in `vite.config.ts`)
-- Domain: Test `chatbot-test.godelmann.net` (Prod nach DNS-Freigabe)
+- Domain: Test `https://chatbot-test.godelmann.net` (LIVE seit 2026-07-12, LE-Cert); Prod-DNS `chatbot.godelmann.net` -> godelmann-prod angelegt (Serving-Setup dort noch offen)
 - GitHub: Godelmann/Godelmann-Chatbot
 ## Doku-Pflege (PFLICHT)
 
