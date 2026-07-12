@@ -6,7 +6,7 @@
 | **Schweregrad** | P3 |
 | **Bereich** | HTML / Branding |
 | **Entdeckt** | 2026-07-02 (Multi-Agent-Audit) |
-| **Status** | OPEN |
+| **Status** | RESOLVED (2026-07-12 · 0.0.1: `index.html` mit `lang="de"` + Titel „GODELMANN Chatbot — Widget-Preview") |
 
 ## Symptom
 Das ausgelieferte HTML-Dokument des GODELMANN-Chatbot-Widgets deklariert die Dokumentsprache als Englisch (`<html lang="en">`) und traegt den technischen Platzhalter-Titel `godelmann-chatbot` statt eines echten deutschen Brand-Titels.

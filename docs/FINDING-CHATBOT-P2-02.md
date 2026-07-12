@@ -6,7 +6,7 @@
 | **Schweregrad** | P2 |
 | **Bereich** | Dokumentation / Tech-Stack |
 | **Entdeckt** | 2026-07-02 (Multi-Agent-Audit) |
-| **Status** | OPEN |
+| **Status** | RESOLVED (2026-07-12 · 0.0.1: CLAUDE.md beschreibt Ist-Stand — Vanilla-TS Web Component, kein React/Tailwind/shadcn/Supabase) |
 
 ## Symptom
 `CLAUDE.md` beschreibt einen Tech-Stack, der im Repo nicht existiert. Zeile 13 nennt „React 18 + Vite + TypeScript + Tailwind + shadcn/ui + SPASS", Zeile 14 „Shared Supabase mit GoCreate (Port 8010)". Tatsaechlich laeuft das Projekt auf React 19.2.4, ohne Tailwind, ohne shadcn/ui, ohne SPASS-Anbindung; `src/` ist unveraendertes Vite-Counter-Template. Eine Supabase-/GoCreate-Anbindung ist nirgends im Code vorhanden.

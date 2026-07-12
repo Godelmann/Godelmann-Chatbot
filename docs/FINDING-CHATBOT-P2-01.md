@@ -6,7 +6,7 @@
 | **Schweregrad** | P2 |
 | **Bereich** | Dev-Ports / Konfiguration |
 | **Entdeckt** | 2026-07-02 (Multi-Agent-Audit) |
-| **Status** | OPEN |
+| **Status** | RESOLVED (Repo-Teil, 2026-07-12 · 0.0.1: `vite.config.ts` setzt `server.port: 5008` + `strictPort`, CLAUDE.md konsistent; PORTS.md-Registry-Eintrag in platform-control bleibt offen) |
 
 ## Symptom
 Die Chatbot-`CLAUDE.md` verspricht den lokalen Dev-Server auf `http://localhost:5008`. Dieser Port ist in der zentralen Port-Registry `platform-control/docs/PORTS.md` jedoch bereits Frahcs Mobilien zugewiesen. Startet man beide Frontends parallel, kollidieren sie am selben Port. Zusätzlich fehlt der Chatbot vollständig in `PORTS.md` (kein eigenes 5xxx/9xxx-Paar), und `vite.config.ts` setzt gar keinen Port — Vite fällt daher tatsächlich auf den Default 5173 zurück, nicht auf das dokumentierte 5008.

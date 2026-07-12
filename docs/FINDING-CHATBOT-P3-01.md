@@ -6,7 +6,7 @@
 | **Schweregrad** | P3 |
 | **Bereich** | Dokumentation / README |
 | **Entdeckt** | 2026-07-02 (Multi-Agent-Audit) |
-| **Status** | OPEN |
+| **Status** | RESOLVED (2026-07-12 · 0.0.1: projektspezifisches README — Widget, Quickstart, Einbindung, Doku-Verweise) |
 
 ## Symptom
 Die `README.md` im Repo-Root des Chatbot-Frontends enthält ausschliesslich den unveränderten Vite-Templatetext („React + TypeScript + Vite"). Sie beschreibt weder das Projekt (Godelmann Chatbot), noch Stage/Ports, Dev-Flow, Deploy oder Architektur. Damit widerspricht sie der plattformweiten Konvention aussagekräftiger, projektspezifischer READMEs.

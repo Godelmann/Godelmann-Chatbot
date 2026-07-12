@@ -1,7 +1,17 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+// Vanilla-TS Web Component — lib-mode Build zu EINEM versionierten ES-Modul.
+// Dev-Server-Port 5008 (CLAUDE.md / Finding CHATBOT-P2-01: Port explizit setzen).
 export default defineConfig({
-  plugins: [react()],
+  server: { port: 5008, strictPort: true },
+  build: {
+    target: 'es2020',
+    minify: true,
+    copyPublicDir: false,
+    lib: {
+      entry: 'src/chatbot-widget.ts',
+      formats: ['es'],
+      fileName: () => 'chatbot-widget.v1.js',
+    },
+  },
 })

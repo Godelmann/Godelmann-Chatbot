@@ -6,7 +6,7 @@
 | **Schweregrad** | P2 |
 | **Bereich** | Dependencies / Security |
 | **Entdeckt** | 2026-07-02 (Multi-Agent-Audit) |
-| **Status** | OPEN |
+| **Status** | RESOLVED (2026-07-12 · 0.0.1: `npm audit fix` → 0 vulnerabilities; React-Toolchain komplett entfernt) |
 
 ## Symptom
 `npm audit` im Repo `godelmann-chatbot` meldet 5 offene Verwundbarkeiten: 1 high, 3 moderate, 1 low. Die high-Meldung betrifft die installierte Dev-Toolchain `vite` (Bereich 8.0.0–8.0.15), zusaetzlich moderate/low-Advisories in transitiven Dev-Dependencies.

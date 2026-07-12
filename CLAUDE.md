@@ -1,18 +1,23 @@
 # Godelmann-Chatbot
 
-KI-Chat Widget für godelmann.de — React/Vite/TypeScript Frontend.
+KI-Chat-Widget für godelmann.de — Web Component `<godelmann-chatbot>` in
+Vanilla TypeScript (WHATWG Custom Element + Shadow DOM, KEINE
+Framework-Dependency). Verbindliche Spezifikation: `docs/ANFORDERUNGEN.md`;
+Integrations-Doku für die Agentur: `docs/EINBINDUNG.md`.
 
 ## Common Commands
 ```bash
-npm run dev          # Dev-Server auf http://localhost:5008
-npm run build        # Production Build
+npm run dev          # Standalone-Preview (index.html) auf http://localhost:5008
+npm run build        # tsc --noEmit + Vite lib-mode -> dist/chatbot-widget.v1.js
 npm run lint         # ESLint
 ```
 
 ## Tech Stack
-- React 18 + Vite + TypeScript + Tailwind + shadcn/ui + SPASS
-- Shared Supabase mit GoCreate (Port 8010)
-- Domain: (noch nicht zugewiesen)
+- Vanilla TypeScript + Vite (lib-mode, EIN ES-Modul `dist/chatbot-widget.v1.js`, Gate < 80 kB gzip)
+- Kein React/Tailwind/shadcn — Styling im Shadow DOM, Theming über CSS-Custom-Properties
+- Backend: `godelmann-chatbot-server` (spass `examples/`, PORT 9008) — `POST /api/chat` (SSE) + `GET /altcha/challenge`
+- Dev-Port: 5008 (explizit in `vite.config.ts`)
+- Domain: Test `chatbot-test.godelmann.net` (Prod nach DNS-Freigabe)
 - GitHub: Godelmann/Godelmann-Chatbot
 ## Doku-Pflege (PFLICHT)
 

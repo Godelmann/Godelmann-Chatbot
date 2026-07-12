@@ -1,73 +1,32 @@
-# React + TypeScript + Vite
+# Godelmann-Chatbot
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Oeffentliches KI-Chat-Widget fuer godelmann.de — **Web Component**
+`<godelmann-chatbot>` (WHATWG Custom Element + Shadow DOM, Vanilla
+TypeScript, keine Framework-Dependency). Floating-Bubble, SSE-Streaming
+gegen den `godelmann-chatbot-server` (SPASS, Port 9008), self-hosted
+ALTCHA-Spam-Schutz, IP-Rate-Limit.
 
-Currently, two official plugins are available:
+## Quickstart
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # Standalone-Preview auf http://localhost:5008
+npm run build    # tsc --noEmit + Vite lib-mode -> dist/chatbot-widget.v1.js (< 80 kB gzip)
+npm run lint     # ESLint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Einbindung (godelmann.de)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```html
+<script type="module" src="https://chatbot-test.godelmann.net/chatbot-widget.v1.js"></script>
+<godelmann-chatbot lang="de" position="bottom-right"></godelmann-chatbot>
 ```
+
+Vollstaendige Integrations-Doku (Attribute, CSS-Properties, Events, CSP,
+Datenschutz, Versionierung): [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md).
+
+## Doku
+
+- Verbindliche Spezifikation: [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md)
+- Release-/Feature-Log: [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- Backend/API-Vertrag: `Ramteid-GmbH/spass` → `examples/godelmann-chatbot-server`
