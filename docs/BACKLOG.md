@@ -60,7 +60,7 @@
 | Status | Aufgabe | Details |
 |---|---|---|
 | ✅ | Widget (Web Component) | 0.0.1 — `<godelmann-chatbot>` inkl. SSE, ALTCHA, EINBINDUNG.md (siehe Release-Historie). |
-| ⬚ | Deploy auf `chatbot-test.godelmann.net` | Caddy-vhost + `dist/chatbot-widget.v1.js` ausliefern; Server `godelmann-chatbot-server` (spass, test-PORT 3011) auf platform-test. |
+| ✅ | Deploy auf `chatbot-test.godelmann.net` (2026-07-12) | LIVE: `godelmann-chatbot-server` (SPASS :3011, systemd, ALTCHA+RateLimit), Caddy-vhost mit LE-Cert, SSE-flush, CORS nur godelmann.de inkl. Expose `x-conversation-id`. E2E bestanden: grounded Chat via knowledge_search (deutsch, Modell godelmann-gocreate-private-qwen-text), Folgefrage im selben Verlauf, Honeypot-FakeOk, ALTCHA-Negativtest 400. Prod-DNS `chatbot.godelmann.net` -> godelmann-prod angelegt (Serving dort offen). |
 | ⬚ | E2E-Abnahme laut ANFORDERUNGEN.md | Grounded-Antwort mit Quelle ueber den vhost, Rate-Limit-Negativtest (11. Nachricht → 429), CORS-Negativtest, Browser-E2E auf Test-Einbettungsseite. |
 | ⬚ | Restliche Ausbaustufen | Siehe Sprint-Plan im GoCreate-Websites-Backlog (Sub-App 3: Reviews, Cost-Tracking). |
 
