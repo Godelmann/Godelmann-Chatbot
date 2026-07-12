@@ -16,7 +16,7 @@ Referenzen, Nachhaltigkeit) — grounded über `knowledge_search` mit Quell-Link
 ```
 godelmann.de ──<script src="https://chatbot-test.godelmann.net/chatbot-widget.v1.js">──▶
   Floating-Bubble-Widget ──POST /api/chat (SSE)──▶
-    godelmann-chatbot-server (eigener SPASS-Server, platform-test, PORT 9008)
+    godelmann-chatbot-server (eigener SPASS-Server, platform-test, PORT 3011)
       ├─ Schutz: ALTCHA (self-hosted, /altcha/challenge) + RateLimiter je IP
       ├─ reuse spass-dgx::DgxClient — Bearer server-side
       │   (GODELMANN_GOCREATE_{STAGE}_BEARER), SPASS-User-Id: web:<sha256(ip)[..12]>
@@ -25,7 +25,7 @@ godelmann.de ──<script src="https://chatbot-test.godelmann.net/chatbot-widge
 ```
 
 - **Eigener SPASS-Server** `godelmann-chatbot-server` (spass `examples/`),
-  systemd `godelmann-chatbot.service`, PORT 9008.
+  systemd `godelmann-chatbot.service`, PORT 3011 (Test-Stage-Konvention 3xxx).
 - **Hostname:** Test `chatbot-test.godelmann.net` (Caddy-vhost, CORS nur
   godelmann.de); Prod nach DNS-Freigabe.
 - **Konversationen:** `conversation_id` via First-Party-Cookie (SameSite=Lax) →

@@ -19,7 +19,7 @@
 
 | ID | Finding | Status |
 |---|---|---|
-| [CHATBOT-P2-01](FINDING-CHATBOT-P2-01.md) | Dev-Port-Konflikt: 5008 doppelt (Frahcs), Chatbot fehlt in PORTS.md, vite.config ohne Port | ✅ resolved (Repo-Teil 0.0.1: Port 5008 explizit + strictPort in vite.config; PORTS.md-Registry-Eintrag = platform-control, offen) |
+| [CHATBOT-P2-01](FINDING-CHATBOT-P2-01.md) | Dev-Port-Konflikt: 5008 doppelt (Frahcs), Chatbot fehlt in PORTS.md, vite.config ohne Port | ✅ resolved (0.0.1: Dev-Port 5011 explizit + strictPort; zentrale Port-Registry aktualisiert) |
 | [CHATBOT-P2-02](FINDING-CHATBOT-P2-02.md) | CLAUDE.md-Tech-Stack (React18/Tailwind/shadcn/SPASS/Supabase) weicht vom Ist-Stand (React 19, Vite-Scaffold) ab | ✅ resolved (0.0.1: CLAUDE.md = Vanilla-TS-Web-Component, Ist-Stand) |
 | [CHATBOT-P2-03](FINDING-CHATBOT-P2-03.md) | npm audit fix: 1 high (vite 8.0.1, Dev-Server) + 4 weitere, alle via npm audit fix behebbar | ✅ resolved (0.0.1: npm audit fix → 0 vulnerabilities; React-Deps komplett entfernt) |
 
@@ -48,7 +48,7 @@
 - **Fehler:** 429 deutsche Rate-Limit-Meldung, Netzfehler + Retry-Button, Timeout 120 s.
 - **A11y:** `role=dialog aria-modal`, Fokus-Trap, ESC, `aria-live=polite`, Bubble-`aria-label`.
 - **Theming:** `--gdm-chat-accent` (#E52D12) / `--gdm-chat-z-index` (2147483000) / `--gdm-chat-font` (inherit); mobil vollflächig. Events `gdm-chat:opened/closed/message-sent/response-received/error` (bubbles+composed).
-- **Build:** Vite lib-mode → `dist/chatbot-widget.v1.js` (ES, ein File, minified) — **7,4 kB gzip** (Gate < 80 kB); `npm run build` = `tsc --noEmit` + Vite; Dev-Port 5008.
+- **Build:** Vite lib-mode → `dist/chatbot-widget.v1.js` (ES, ein File, minified) — **7,4 kB gzip** (Gate < 80 kB); `npm run build` = `tsc --noEmit` + Vite; Dev-Port 5011.
 - **Doku:** `docs/EINBINDUNG.md` (Snippet, Attribute, CSS-Props, Events, CSP inkl. SSE, Datenschutz-Baustein, Versionierungs-Politik, Ansprechpartner); README + CLAUDE.md auf Ist-Stand; `index.html` = Standalone-Preview.
 - **Verifiziert:** Headless-E2E (Playwright/Chromium) gegen Mock-Server mit crate-identischer ALTCHA-Verifikation — 30/30 Checks grün (Streaming, Markdown/XSS, Conversation-Verlauf, Replay-frisches ALTCHA, 429, Events, Theming, A11y).
 - Findings CHATBOT-P2-01 (Repo-Teil), P2-02, P2-03, P3-01, P3-02 resolved (siehe Audit-Tabelle oben).
@@ -60,7 +60,7 @@
 | Status | Aufgabe | Details |
 |---|---|---|
 | ✅ | Widget (Web Component) | 0.0.1 — `<godelmann-chatbot>` inkl. SSE, ALTCHA, EINBINDUNG.md (siehe Release-Historie). |
-| ⬚ | Deploy auf `chatbot-test.godelmann.net` | Caddy-vhost + `dist/chatbot-widget.v1.js` ausliefern; Server `godelmann-chatbot-server` (spass, PORT 9008) auf platform-test. |
+| ⬚ | Deploy auf `chatbot-test.godelmann.net` | Caddy-vhost + `dist/chatbot-widget.v1.js` ausliefern; Server `godelmann-chatbot-server` (spass, test-PORT 3011) auf platform-test. |
 | ⬚ | E2E-Abnahme laut ANFORDERUNGEN.md | Grounded-Antwort mit Quelle ueber den vhost, Rate-Limit-Negativtest (11. Nachricht → 429), CORS-Negativtest, Browser-E2E auf Test-Einbettungsseite. |
 | ⬚ | Restliche Ausbaustufen | Siehe Sprint-Plan im GoCreate-Websites-Backlog (Sub-App 3: Reviews, Cost-Tracking). |
 

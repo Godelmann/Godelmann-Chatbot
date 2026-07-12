@@ -3,14 +3,14 @@
 Oeffentliches KI-Chat-Widget fuer godelmann.de — **Web Component**
 `<godelmann-chatbot>` (WHATWG Custom Element + Shadow DOM, Vanilla
 TypeScript, keine Framework-Dependency). Floating-Bubble, SSE-Streaming
-gegen den `godelmann-chatbot-server` (SPASS, Port 9008), self-hosted
+gegen den `godelmann-chatbot-server` (SPASS, test-Port 3011), self-hosted
 ALTCHA-Spam-Schutz, IP-Rate-Limit.
 
 ## Quickstart
 
 ```bash
 npm install
-npm run dev      # Standalone-Preview auf http://localhost:5008
+npm run dev      # Standalone-Preview auf http://localhost:5011
 npm run build    # tsc --noEmit + Vite lib-mode -> dist/chatbot-widget.v1.js (< 80 kB gzip)
 npm run lint     # ESLint
 ```

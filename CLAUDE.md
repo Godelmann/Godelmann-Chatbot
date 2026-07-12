@@ -7,7 +7,7 @@ Integrations-Doku für die Agentur: `docs/EINBINDUNG.md`.
 
 ## Common Commands
 ```bash
-npm run dev          # Standalone-Preview (index.html) auf http://localhost:5008
+npm run dev          # Standalone-Preview (index.html) auf http://localhost:5011
 npm run build        # tsc --noEmit + Vite lib-mode -> dist/chatbot-widget.v1.js
 npm run lint         # ESLint
 ```
@@ -15,8 +15,8 @@ npm run lint         # ESLint
 ## Tech Stack
 - Vanilla TypeScript + Vite (lib-mode, EIN ES-Modul `dist/chatbot-widget.v1.js`, Gate < 80 kB gzip)
 - Kein React/Tailwind/shadcn — Styling im Shadow DOM, Theming über CSS-Custom-Properties
-- Backend: `godelmann-chatbot-server` (spass `examples/`, PORT 9008) — `POST /api/chat` (SSE) + `GET /altcha/challenge`
-- Dev-Port: 5008 (explizit in `vite.config.ts`)
+- Backend: `godelmann-chatbot-server` (spass `examples/`, test-PORT 3011) — `POST /api/chat` (SSE) + `GET /altcha/challenge`
+- Dev-Port: 5011 (explizit in `vite.config.ts`)
 - Domain: Test `chatbot-test.godelmann.net` (Prod nach DNS-Freigabe)
 - GitHub: Godelmann/Godelmann-Chatbot
 ## Doku-Pflege (PFLICHT)
