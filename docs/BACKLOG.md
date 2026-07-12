@@ -60,7 +60,7 @@
 | Status | Aufgabe | Details |
 |---|---|---|
 | ✅ | Widget (Web Component) | 0.0.1 — `<godelmann-chatbot>` inkl. SSE, ALTCHA, EINBINDUNG.md (siehe Release-Historie). |
-| ✅ | Deploy auf `chatbot-test.godelmann.net` (2026-07-12) | LIVE: `godelmann-chatbot-server` (SPASS :3011, systemd, ALTCHA+RateLimit), Caddy-vhost mit LE-Cert, SSE-flush, CORS nur godelmann.de inkl. Expose `x-conversation-id`. E2E bestanden: grounded Chat via knowledge_search (deutsch, Modell godelmann-gocreate-private-qwen-text), Folgefrage im selben Verlauf, Honeypot-FakeOk, ALTCHA-Negativtest 400. Prod-DNS `chatbot.godelmann.net` -> godelmann-prod angelegt (Serving dort offen). |
+| ✅ | Deploy auf `chatbot-test.godelmann.net` (2026-07-12) | LIVE: `godelmann-chatbot-server` (SPASS :3011, systemd, ALTCHA+RateLimit), Caddy-vhost mit LE-Cert, SSE-flush, CORS nur godelmann.de inkl. Expose `x-conversation-id`. E2E bestanden: grounded Chat via knowledge_search (deutsch, Modell godelmann-gocreate-private-qwen-text), Folgefrage im selben Verlauf, Honeypot-FakeOk, ALTCHA-Negativtest 400. **Prod ebenfalls LIVE** (`https://chatbot.godelmann.net`, godelmann-prod :3011; eigener Web-Chat-System-Prompt deutsch + knowledge_search, Tenant-Inject via SPASS-Augment aus — dgx CR-0018; Rate-Limit-429 + RLS-Gegenprobe bestanden). |
 | ⬚ | E2E-Abnahme laut ANFORDERUNGEN.md | Grounded-Antwort mit Quelle ueber den vhost, Rate-Limit-Negativtest (11. Nachricht → 429), CORS-Negativtest, Browser-E2E auf Test-Einbettungsseite. |
 | ⬚ | Restliche Ausbaustufen | Siehe Sprint-Plan im GoCreate-Websites-Backlog (Sub-App 3: Reviews, Cost-Tracking). |
 
