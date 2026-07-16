@@ -1,5 +1,12 @@
 # Godelmann-Chatbot
 
+> **XODER-Prinzip (autark, gilt auch ohne Org-/Meta-Checkout):** Die Betriebs-SSoT dieses Repos liegt
+> im Verzeichnis **`.xoder/`**; Meta-Einstieg ist **[`.xoder/XODER.md`](.xoder/XODER.md)** (ZUERST lesen —
+> Hierarchie: Repo hier, optional Org `Godelmann/.xoder` + Meta `~/Projects`). Topologie/Zugang:
+> [`.xoder/NETWORK.md`](.xoder/NETWORK.md) · offene Betriebs-Aufgaben: [`.xoder/BACKLOG.md`](.xoder/BACKLOG.md)
+> (Fach-Backlog: [`docs/BACKLOG.md`](docs/BACKLOG.md)) · Healthcheck/Monitoring/Testing analog in `.xoder/`.
+> Nicht-Claude-Agents: [`AGENTS.md`](AGENTS.md).
+
 KI-Chat-Widget für godelmann.de — Web Component `<godelmann-chatbot>` in
 Vanilla TypeScript (WHATWG Custom Element + Shadow DOM, KEINE
 Framework-Dependency). Verbindliche Spezifikation: `docs/ANFORDERUNGEN.md`;
