@@ -1,10 +1,14 @@
 # Godelmann-Chatbot
 
-Oeffentliches KI-Chat-Widget fuer godelmann.de — **Web Component**
-`<godelmann-chatbot>` (WHATWG Custom Element + Shadow DOM, Vanilla
-TypeScript, keine Framework-Dependency). Floating-Bubble, SSE-Streaming
-gegen den `godelmann-chatbot-server` (SPASS, test-Port 3011), self-hosted
-ALTCHA-Spam-Schutz, IP-Rate-Limit.
+Oeffentliches KI-Chat-Widget fuer **godelmann.de** — Web Component `<godelmann-chatbot>`
+(WHATWG Custom Element + Shadow DOM, Vanilla TypeScript, **keine Framework-Dependency**).
+Floating-Bubble mit SSE-Streaming gegen den `godelmann-chatbot-server` (SPASS), self-hosted
+ALTCHA-Spam-Schutz + IP-Rate-Limit, grounded ueber die Godelmann-RAG-Wissensbasis (DGX).
+
+> Dieses Repo folgt dem **XODER-Prinzip**: die Single Source of Truth liegt in
+> [`.xoder/`](.xoder/), Meta-Einstieg ist **[`.xoder/XODER.md`](.xoder/XODER.md)**. Dieses README ist
+> die menschliche GitHub-Landing und **verlinkt** dorthin (dupliziert nichts).
+> Agenten-Einstiege: [`CLAUDE.md`](CLAUDE.md) (Claude Code) · [`AGENTS.md`](AGENTS.md).
 
 ## Quickstart
 
@@ -22,11 +26,26 @@ npm run lint     # ESLint
 <godelmann-chatbot lang="de" position="bottom-right"></godelmann-chatbot>
 ```
 
-Vollstaendige Integrations-Doku (Attribute, CSS-Properties, Events, CSP,
-Datenschutz, Versionierung): [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md).
+Vollstaendige Integrations-Doku (Attribute, CSS-Properties, Events, CSP, Datenschutz,
+Versionierung): [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md).
 
-## Doku
+## Dokumentation
 
-- Verbindliche Spezifikation: [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md)
-- Release-/Feature-Log: [`docs/BACKLOG.md`](docs/BACKLOG.md)
-- Backend/API-Vertrag: `Ramteid-GmbH/spass` → `examples/godelmann-chatbot-server`
+| Datei | Inhalt |
+|---|---|
+| [`.xoder/XODER.md`](.xoder/XODER.md) | Prinzip, Datei-Inventar, Rolle/Befunde, Kern-Konventionen (Meta-Einstieg) |
+| [`.xoder/NETWORK.md`](.xoder/NETWORK.md) | Topologie-SSoT: Widget-ES-Modul, Embed, `godelmann-chatbot-server` (:3011), DGX-RAG, SSH-2-Hop |
+| [`.xoder/HEALTHCHECK.md`](.xoder/HEALTHCHECK.md) · [`MONITORING.md`](.xoder/MONITORING.md) · [`TESTING.md`](.xoder/TESTING.md) | Health-Sweep · Wachpunkte · Gates (tsc/lint/Bundle) |
+| [`.xoder/BACKLOG.md`](.xoder/BACKLOG.md) | Betriebs-Backlog (inkl. Sektion `PARENT`) |
+| [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md) | Verbindliche Spezifikation (Web-Components-Pflicht, API-Vertrag, Abnahme) |
+| [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md) | Pflicht-Deliverable — Integrations-Doku fuer die godelmann.de-Agentur |
+| [`docs/BACKLOG.md`](docs/BACKLOG.md) | Fach-/Release-Log — Release-Historie, offene Ausbaustufen |
+| [`docs/AUDIT-2026-07-12.md`](docs/AUDIT-2026-07-12.md) · [`docs/FINDINGS-2026-07-12.md`](docs/FINDINGS-2026-07-12.md) | Security-Audit-Tracker + Belege (0 Findings; `docs/FINDING-CHATBOT-*.md`) |
+
+Backend/API-Vertrag: `Ramteid-GmbH/spass` -> `examples/godelmann-chatbot-server`.
+
+## Konventionen
+
+- **Commits/PRs:** Conventional Commits, ASCII, **kein AI-/Co-Authored-By-Footer** (flottenweite Pflicht, s. `../.xoder/GITHUB.md`). Default-Branch `main` (Protected nur ueber PR).
+- **Gates vor Commit:** `npm run build` (= `tsc --noEmit` + Vite lib-Build, 0 Fehler) + `npm run lint`; Bundle-Gate `dist/chatbot-widget.v1.js` < 80 kB gzip.
+- **Versionierte Datei-URL** ist Vertrag zur Agentur: Breaking Changes nur als neue `chatbot-widget.v2.js`.
