@@ -848,6 +848,9 @@ export class GodelmannChatbot extends HTMLElement {
     if (!reader) throw new ChatError('generic', 'missing response body');
     const decoder = new TextDecoder();
     let buffer = '';
+    // Thinking-Modell: streamt erst sein Reasoning (endet mit </think>), dann die
+    // Antwort. Bis </think> gesehen ist, wird nichts gerendert (kein Leak).
+    let sawThinkClose = false;
 
     for (;;) {
       let chunk: ReadableStreamReadResult<Uint8Array>;
@@ -856,7 +859,10 @@ export class GodelmannChatbot extends HTMLElement {
       } catch {
         throw new ChatError(isTimedOut() ? 'timeout' : 'network', 'stream aborted');
       }
-      if (chunk.done) return;
+      if (chunk.done) {
+        this.finishRender(assistant);
+        return;
+      }
       buffer += decoder.decode(chunk.value, { stream: true });
 
       const events = buffer.split('\n\n');
@@ -869,14 +875,20 @@ export class GodelmannChatbot extends HTMLElement {
           else if (trimmed === 'data:') dataPayload = '';
         }
         if (dataPayload === null) continue;
-        if (dataPayload === '[DONE]') return;
+        if (dataPayload === '[DONE]') {
+          this.finishRender(assistant);
+          return;
+        }
         try {
           const parsed: unknown = JSON.parse(dataPayload);
           const content = extractDeltaContent(parsed);
           if (content) {
             assistant.text += content;
-            if (assistant.el) {
-              assistant.el.innerHTML = renderMarkdown(assistant.text);
+            if (!sawThinkClose && /<\/think>/i.test(assistant.text)) sawThinkClose = true;
+            // Erst rendern, wenn das Reasoning durch ist -> bis dahin bleibt der
+            // Tipp-Indikator stehen. Danach nur die gestrippte Antwort live rendern.
+            if (sawThinkClose && assistant.el) {
+              assistant.el.innerHTML = renderMarkdown(visibleAnswer(assistant.text));
               this.scrollToEnd();
             }
           }
@@ -884,6 +896,15 @@ export class GodelmannChatbot extends HTMLElement {
           // Nicht-JSON-Events (z. B. Kommentar-Pings) ignorieren.
         }
       }
+    }
+  }
+
+  /** Stream-Ende: Reasoning entfernen, saubere Antwort rendern + als Verlauf sichern. */
+  private finishRender(assistant: MessageEntry): void {
+    assistant.text = visibleAnswer(assistant.text);
+    if (assistant.el) {
+      assistant.el.innerHTML = renderMarkdown(assistant.text);
+      this.scrollToEnd();
     }
   }
 
@@ -903,6 +924,28 @@ function extractDeltaContent(parsed: unknown): string {
   if (!delta || typeof delta !== 'object') return '';
   const content = (delta as { content?: unknown }).content;
   return typeof content === 'string' ? content : '';
+}
+
+/**
+ * Reasoning aus dem Antworttext entfernen (GoCreate src/lib/dgx.ts-Muster).
+ * Die DGX-Streaming-Antwort liefert das Chain-of-Thought der Thinking-Modelle
+ * im `delta.content` (Reasoning ... `</think>` ... eigentliche Antwort), waehrend
+ * der Non-Stream-Pfad es sauber in `provider_specific_fields.reasoning` trennt.
+ * Ohne dieses Stripping wuerde der interne Denk-Block im Kundenfenster erscheinen.
+ * Regeln: (1) vollstaendige `<think>...</think>`-Paare raus; (2) geleaktes
+ * Reasoning ohne oeffnendes Tag = alles bis zum letzten `</think>` ist Reasoning;
+ * (3) noch offenes `<think>` (Stream mitten im Denken) = ab dem Tag abschneiden.
+ */
+function visibleAnswer(raw: string): string {
+  let t = raw.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  const lower = t.toLowerCase();
+  const closeIdx = lower.lastIndexOf('</think>');
+  if (closeIdx !== -1) {
+    t = t.slice(closeIdx + '</think>'.length);
+  } else if (lower.includes('<think>')) {
+    t = t.slice(0, lower.indexOf('<think>'));
+  }
+  return t.replace(/^[\s\n]+/, '');
 }
 
 // localStorage kann in Privacy-Modi werfen — defensiv kapseln.

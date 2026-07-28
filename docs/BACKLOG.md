@@ -1,7 +1,18 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-07-12 (Paket-Version **0.0.1**)
+> Stand: 2026-07-28 (Paket-Version **0.0.2**)
 > Maintainer: Dietmar Scharf
+
+## Releases
+
+- **0.0.2 (2026-07-28)** — Reasoning-Leak behoben: DGX-Streaming liefert das
+  Chain-of-Thought der Thinking-Modelle im `delta.content` (`<think>...</think>`),
+  der abgespeckte Widget-Parser strippte es nicht → der interne Denk-Block
+  erschien im Kundenfenster. `visibleAnswer()` + Suppression bis `</think>`
+  (GoCreate-`dgx.ts`-Muster) rendern jetzt nur die fertige Antwort. Begleitend
+  im Server (`spass/examples/godelmann-chatbot-server`) der Web-Chat-System-Prompt
+  gegen Halluzination geschaerft (kein Raten von Produkt-/Oberflaechennamen/Normen,
+  ehrlicher Wissensluecken-Ausweg statt Synthese).
 >
 > KI-Chat-Widget für godelmann.de — Web Component `<godelmann-chatbot>` (Vanilla TS, Shadow DOM). Eingebettet via versioniertem ES-Modul (Floating-Bubble, kein iFrame).
 > Kontext + Sprint-Plan: GoCreate-Websites-Backlog, Sub-App 3
