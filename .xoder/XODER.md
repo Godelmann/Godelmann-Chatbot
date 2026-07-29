@@ -40,7 +40,9 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
 | `.xoder/HEALTHCHECK.md` | Ende-zu-Ende-Sweep (Widget-Modul erreichbar, `/api/chat` SSE, ALTCHA, CORS, Bundle-Gate) |
 | `.xoder/MONITORING.md` | Laufende Wachpunkte (chatbot-server-Unit, Rate-Limit-429, ALTCHA-Reject-Quote, Cert-Ablauf) |
 | `.xoder/TESTING.md` | Gates (`tsc --noEmit`, ESLint, Vite lib-Build, Bundle < 80 kB) + externe E2E-Abnahme |
+| `.xoder/TIME.md` | Zeit/Zeitzonen/NTP — Widget = Browser-lokal, Server = UTC auf geteilten Hosts; Rate-Limit-/Cache-Fenster |
 | `docs/ANFORDERUNGEN.md` | **Verbindliche Spezifikation** (Web-Components-Pflicht, API-Vertrag, Abnahme) |
+| `docs/ABLAUFPLAN-HEIKE-2026-07-20.md` | **Gespraechs-Ablaufplan (SSoT)** fuer die Zielgruppen-Weiche (Fachkunde/Endkunde) + Guided Selling + PLZ-Ansprechpartner |
 | `docs/EINBINDUNG.md` | **Pflicht-Deliverable** — deutsche Integrations-Doku fuer die godelmann.de-Agentur |
 | `docs/BACKLOG.md` | Fach-Backlog — Release-Historie, Audit-Findings, offene Ausbaustufen |
 | `docs/AUDIT-2026-07-12.md` · `docs/FINDINGS-2026-07-12.md` | Security-Audit (0 Findings) + FINDING-`<ID>`-Detaildateien |
@@ -66,10 +68,17 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
   laedt keine externen Ressourcen, Gate < 80 kB gzip). Dev-Port **5011** (`vite.config.ts`, zentrale Port-Registry).
 - **Kette:** godelmann.de `<script>` → Widget → `POST {host}/api/chat` (SSE) →
   **`godelmann-chatbot-server`** (eigener SPASS-Server, `Ramteid-GmbH/spass` `examples/godelmann-chatbot-server`,
-  systemd `godelmann-chatbot.service`, **PORT 3011**) → DGX `/c1/chat` Modell **godelmann-gocreate-private-qwen-text**
-  (lokal) mit auto-injiziertem `knowledge_search` (Godelmann-RAG-Wissensbasis).
+  systemd `godelmann-chatbot.service`, **PORT 3011**) → DGX `/c1/chat` mit auto-injiziertem
+  `knowledge_search` (Godelmann-RAG-Wissensbasis).
+- **Tenant + Modell:** DGX-Tenant **`godelmann-public`** (`DgxConfig::public_from_env` →
+  `GODELMANN_PUBLIC_{TEST,PROD}_BEARER`; **NICHT** `godelmann-gocreate`). Das Live-Bot-Modell ist die
+  Server-Env **`CHATBOT_MODEL`** (Default `godelmann-gocreate-private-qwen-text` = lokal, falls ungesetzt).
+  **Seit 2026-07-29 auf test `CHATBOT_MODEL=gpt-5.6`** (qwen ruft `knowledge_search` unzuverlaessig auf →
+  Halluzinationen; Modellvergleich in GoCreate `docs/WEBCHAT-MODELLVERGLEICH-2026-07-29.md`); prod folgt mit
+  separater Freigabe. `gpt-5.6` muss in der Tenant-`defaults.models_allowlist` (`tokens.yaml`) stehen — dort
+  eingetragen. Der **`godelmann-gocreate`**-Tenant ist der interne GoCreate-Chat, ein **anderer** Consumer.
 - **Schutz:** self-hosted **ALTCHA** (`GET /altcha/challenge`, SHA-256-PoW) + **IP-Rate-Limit**
-  (10 Nachrichten / 10 min je IP); Bearer server-side (`GODELMANN_GOCREATE_{STAGE}_BEARER`),
+  (10 Nachrichten / 10 min je IP); Bearer server-side (`GODELMANN_PUBLIC_{STAGE}_BEARER`),
   `SPASS-User-Id: web:<sha256(ip)[..12]>`. Anonym, kein Login, keine PII (Datenschutz-Hinweis im Widget).
 - **Hostnames:** Test `https://chatbot-test.godelmann.net` (LIVE 2026-07-12, LE-Cert, platform-test :3011) ·
   Prod `https://chatbot.godelmann.net` (LIVE, godelmann-prod :3011). Caddy-vhost, CORS nur godelmann.de.
@@ -85,8 +94,24 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
   Rate-Limit-429). Details `docs/BACKLOG.md` § Release-Historie.
 - **2026-07-12 — Security-Audit: 0 Findings** (Teil des BLUEITS/REDITS Fleet-Audits, kleines TS-Widget).
   Belege `docs/FINDINGS-2026-07-12.md` · Tracker `docs/AUDIT-2026-07-12.md` · Register `Godelmann/.xoder/FINDINGS.md`.
+- **2026-07-29 — v0.0.4: Zielgruppen-Weiche + Guided Selling + PLZ-Ansprechpartner (LIVE test).**
+  Ablaufplan Heike (`docs/ABLAUFPLAN-HEIKE-2026-07-20.md`) umgesetzt — VOR dem KI-Modell fragt die
+  Begruessung **Fachkunde/Endkunde** (Chip-Buttons + Freitext-Klassifikation `classifyBranch`), je Branch
+  ein Guided-Selling-Menue (`BRANCH_ACTIONS`), dessen Buttons geerdete Fragen an den Bot stellen.
+  **PLZ-Ansprechpartner** (Fachkunde): Widget fragt PLZ → `GET {host}/api/contact?plz=&topic=` →
+  Ansprechpartner-Karte (`tel:`/`mailto:`), erfindet **nie** Namen. **Administrierbare Link-Ziele**:
+  `GET {host}/api/webchat-config` (Buttons oeffnen konfigurierte URLs). Zusaetzlich: `renderMarkdown` mit
+  Bildern `![]()` + Tabellen; Quick-Action „Produkte vergleichen". Backend-Endpoints im
+  `godelmann-chatbot-server` (spass `620965e`, Daten aus GoCreate-Supabase `webchat_contacts`/`webchat_links`,
+  gepflegt in GoCreate Sub-App `/dashboard/websites/godelmann/kontakte`). Vorlaeufer v0.0.2 (Reasoning-Strip,
+  kein `<think>`-Leak) + v0.0.3 (Weiche-Erstfassung).
 
 ## Roadmap / Offen
+- **⚠️ Dependency — echte Vertriebs-Adressliste:** PLZ→Ansprechpartner-Kontaktdaten (Dietmar extrahiert sie
+  aus einem Dokument) in die GoCreate-Kontakt-Admin einpflegen; danach Test-Kontakt ersetzen. Ebenso die
+  **echten Link-Ziel-URLs** (Heike) in `webchat_links` eintragen.
+- **Prod-Rollout der Weiche/Kontakte:** `CHATBOT_MODEL=gpt-5.6` + `CONTACT_SUPABASE_*`-Env auf prod-Chatbot,
+  Widget-/Server-Deploy prod, prod-caddy-CORS — separat mit Freigabe (Kette laeuft heute nur test).
 - E2E-Abnahme laut `docs/ANFORDERUNGEN.md` formal abschliessen (grounded-Antwort mit Quelle ueber den
   vhost, Rate-Limit-Negativtest, CORS-Negativtest, Browser-E2E auf Test-Einbettungsseite).
 - Restliche Ausbaustufen aus dem GoCreate-Websites-Backlog (Sub-App 3: Chat-Reviews/Kuratierung, Cost-Tracking).

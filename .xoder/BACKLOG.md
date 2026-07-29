@@ -7,14 +7,21 @@
 > [`../docs/BACKLOG.md`](../docs/BACKLOG.md). Diese Datei ist die **XODER-Betriebs-Sicht** — Verweise
 > + offene Betriebs-/Hygiene-Punkte, keine Duplikate.
 
-**Stand:** 2026-07-16 · Paket-Version **v0.0.1** (test+prod LIVE).
+**Stand:** 2026-07-29 · Paket-Version **v0.0.4** (test LIVE; prod = v0.0.1, Rollout offen).
 
 ## 1. Aktive Straenge
 
-- **Widget `<godelmann-chatbot>` v0.0.1 — LIVE (test+prod).** Web Component (Vanilla TS, Shadow DOM),
-  SSE-Streaming, clientseitiges ALTCHA, sanitized Markdown, A11y. Bundle ~7,4 kB gzip (Gate < 80 kB).
+- **Widget `<godelmann-chatbot>` v0.0.4 — LIVE test (prod = v0.0.1).** Web Component (Vanilla TS, Shadow DOM),
+  SSE-Streaming, clientseitiges ALTCHA, sanitized Markdown, A11y. Bundle < 80 kB gzip (Gate).
   Einbettungs-Vertrag: [`../docs/EINBINDUNG.md`](../docs/EINBINDUNG.md). Backend `godelmann-chatbot-server`
   (SPASS :3011, `Ramteid-GmbH/spass` `examples/`) auf beiden Stages live.
+  - **v0.0.2-0.0.4 (29.07., LIVE test):** Reasoning-Strip (kein `<think>`-Leak) · **Zielgruppen-Weiche**
+    (Fachkunde/Endkunde) + Guided Selling nach `../docs/ABLAUFPLAN-HEIKE-2026-07-20.md` · **PLZ-Ansprechpartner**
+    (`GET /api/contact`) · **administrierbare Link-Ziele** (`GET /api/webchat-config`) · Markdown-Bilder/Tabellen.
+  - [ ] **⚠️ Dependency:** echte Vertriebs-Adressliste (PLZ→Ansprechpartner, Dietmar) + echte Link-Ziel-URLs
+    (Heike) in die GoCreate-Kontakt-Admin (`webchat_contacts`/`webchat_links`) einpflegen → Test-Daten ersetzen.
+  - [ ] **Prod-Rollout v0.0.4:** Widget-/Server-Deploy prod + `CHATBOT_MODEL=gpt-5.6` + `CONTACT_SUPABASE_*`-Env
+    + prod-caddy-CORS — separat mit Freigabe (heute laeuft die Kontakt-/Weiche-Kette nur test).
   - [ ] **E2E-Abnahme formal abschliessen** (laut [`../docs/ANFORDERUNGEN.md`](../docs/ANFORDERUNGEN.md) § Abnahme):
     grounded Antwort mit godelmann.de-Quelle ueber den vhost + Folgefrage im selben Verlauf ·
     Rate-Limit-Negativtest (11. Nachricht → 429) · ALTCHA-Flow · **CORS-Negativtest** · Browser-E2E

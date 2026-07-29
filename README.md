@@ -35,9 +35,10 @@ Versionierung): [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md).
 |---|---|
 | [`.xoder/XODER.md`](.xoder/XODER.md) | Prinzip, Datei-Inventar, Rolle/Befunde, Kern-Konventionen (Meta-Einstieg) |
 | [`.xoder/NETWORK.md`](.xoder/NETWORK.md) | Topologie-SSoT: Widget-ES-Modul, Embed, `godelmann-chatbot-server` (:3011), DGX-RAG, SSH-2-Hop |
-| [`.xoder/HEALTHCHECK.md`](.xoder/HEALTHCHECK.md) · [`MONITORING.md`](.xoder/MONITORING.md) · [`TESTING.md`](.xoder/TESTING.md) | Health-Sweep · Wachpunkte · Gates (tsc/lint/Bundle) |
+| [`.xoder/HEALTHCHECK.md`](.xoder/HEALTHCHECK.md) · [`MONITORING.md`](.xoder/MONITORING.md) · [`TESTING.md`](.xoder/TESTING.md) · [`TIME.md`](.xoder/TIME.md) | Health-Sweep · Wachpunkte · Gates (tsc/lint/Bundle) · Zeit/NTP |
 | [`.xoder/BACKLOG.md`](.xoder/BACKLOG.md) | Betriebs-Backlog (inkl. Sektion `PARENT`) |
 | [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md) | Verbindliche Spezifikation (Web-Components-Pflicht, API-Vertrag, Abnahme) |
+| [`docs/ABLAUFPLAN-HEIKE-2026-07-20.md`](docs/ABLAUFPLAN-HEIKE-2026-07-20.md) | Gespraechs-Ablaufplan (SSoT) — Zielgruppen-Weiche (Fachkunde/Endkunde), Guided Selling, PLZ-Ansprechpartner |
 | [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md) | Pflicht-Deliverable — Integrations-Doku fuer die godelmann.de-Agentur |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | Fach-/Release-Log — Release-Historie, offene Ausbaustufen |
 | [`docs/AUDIT-2026-07-12.md`](docs/AUDIT-2026-07-12.md) · [`docs/FINDINGS-2026-07-12.md`](docs/FINDINGS-2026-07-12.md) | Security-Audit-Tracker + Belege (0 Findings; `docs/FINDING-CHATBOT-*.md`) |
