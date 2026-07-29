@@ -1,9 +1,18 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-07-28 (Paket-Version **0.0.2**)
+> Stand: 2026-07-29 (Paket-Version **0.0.3**)
 > Maintainer: Dietmar Scharf
 
 ## Releases
+
+- **0.0.3 (2026-07-29)** — Zielgruppen-Weiche + Guided Selling (Ablaufplan Heike, 20.07.,
+  `docs/ABLAUFPLAN-HEIKE-2026-07-20.md`). Begruessung fragt jetzt „Fachkunde oder Endkunde?"
+  (Buttons + Freitext-Erkennung nach Heikes Stichwortlisten). Je Zielgruppe ein Guided-Selling-
+  Menue (Endkunde: Produkte/Inspirationen/Gartenbuch/Neuheiten/Ideengarten/Haendlersuche/Hotline ·
+  Fachkunde: Produkte/Objektplanung/Mediathek/Referenzen/Ansprechpartner). Die meisten Buttons
+  stellen eine geerdete Frage an den Bot (echte godelmann.de-Quellen, keine hartkodierten Links);
+  „Ansprechpartner finden" fragt die PLZ ab — Zuordnung **Platzhalter bis zur Vertriebs-Adressliste**.
+  Rein im Widget (vor dem KI-Modell), Chip-Buttons im CI-Rot. Erste Praesentations-Version.
 
 - **0.0.2 (2026-07-28)** — Reasoning-Leak behoben: DGX-Streaming liefert das
   Chain-of-Thought der Thinking-Modelle im `delta.content` (`<think>...</think>`),

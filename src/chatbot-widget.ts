@@ -57,8 +57,8 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     bubbleClose: 'Godelmann-Assistent schliessen',
     headerTitle: 'Godelmann-Assistent',
     greeting:
-      'Hallo! Ich bin der Godelmann-Assistent und beantworte Ihre Fragen zu ' +
-      'Produkten, Verlegung, Referenzen und Nachhaltigkeit. Wie kann ich helfen?',
+      'Willkommen bei GODELMANN! Sind Sie Fachkunde oder Endkunde? ' +
+      'Waehlen Sie einfach eine Option oder schreiben Sie mir direkt Ihre Frage.',
     inputPlaceholder: 'Ihre Frage …',
     send: 'Senden',
     newConversation: 'Neue Unterhaltung',
@@ -82,8 +82,8 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     bubbleClose: 'Close Godelmann assistant',
     headerTitle: 'Godelmann Assistant',
     greeting:
-      'Hello! I am the Godelmann assistant, answering your questions about ' +
-      'products, installation, references and sustainability. How can I help?',
+      'Welcome to GODELMANN! Are you a trade professional or a private customer? ' +
+      'Pick an option or just type your question.',
     inputPlaceholder: 'Your question …',
     send: 'Send',
     newConversation: 'New conversation',
@@ -101,6 +101,93 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     retry: 'Retry',
   },
 };
+
+// ---------------------------------------------------------------------------
+// Guided Selling / Zielgruppen-Weiche (Ablaufplan Heike, 20.07.)
+// docs/ABLAUFPLAN-HEIKE-2026-07-20.md. Die Button-Menues laufen IM Widget vor
+// dem KI-Modell; die meisten Aktionen stellen eine geerdete Frage an den Bot
+// (echte godelmann.de-Quellen aus der Wissensbasis, keine hartkodierten Links).
+// ---------------------------------------------------------------------------
+
+type Branch = 'endkunde' | 'fachkunde';
+interface QuickAction { label: string; ask?: string; special?: 'plz' }
+
+const BRANCH_INTRO: Record<'de' | 'en', Record<Branch, string>> = {
+  de: {
+    endkunde: 'Schoen, dass Sie da sind. Wobei koennen wir Sie unterstuetzen?',
+    fachkunde: 'Willkommen im Fachkundenbereich. Wobei koennen wir Sie unterstuetzen?',
+  },
+  en: {
+    endkunde: 'Great to have you here. How can we help you?',
+    fachkunde: 'Welcome to the trade area. How can we help you?',
+  },
+};
+
+const BRANCH_ACTIONS: Record<'de' | 'en', Record<Branch, QuickAction[]>> = {
+  de: {
+    endkunde: [
+      { label: 'Produkte entdecken', ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?' },
+      { label: 'Inspirationen fuer Garten & Terrasse', ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.' },
+      { label: 'Gartenbuch', ask: 'Wo finde ich das aktuelle Godelmann-Gartenbuch zum Herunterladen?' },
+      { label: 'Neuheiten', ask: 'Was sind die aktuellen Neuheiten von Godelmann?' },
+      { label: 'Ideengarten besuchen', ask: 'Wo gibt es einen Godelmann-Ideengarten, den ich besuchen kann?' },
+      { label: 'Haendlersuche', ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?' },
+      { label: 'Service-Hotline', ask: 'Wie erreiche ich die GODELMANN-Beratung bzw. Service-Hotline?' },
+    ],
+    fachkunde: [
+      { label: 'Produkte', ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?' },
+      { label: 'Themen zur Objektplanung', ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?' },
+      { label: 'Mediathek (Downloads, Ausschreibung, BIM/CAD)', ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?' },
+      { label: 'Referenzen', ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.' },
+      { label: 'Ansprechpartner finden', special: 'plz' },
+    ],
+  },
+  en: {
+    endkunde: [
+      { label: 'Discover products', ask: 'Which Godelmann products are available for garden, terrace and driveway?' },
+      { label: 'Inspiration for garden & terrace', ask: 'Show me inspiration and design ideas for garden and terrace by Godelmann.' },
+      { label: 'Garden book', ask: 'Where can I download the current Godelmann garden book?' },
+      { label: 'New products', ask: 'What are the latest Godelmann product news?' },
+      { label: 'Visit an idea garden', ask: 'Where can I visit a Godelmann idea garden?' },
+      { label: 'Find a dealer', ask: 'How do I find a Godelmann dealer near me?' },
+      { label: 'Service hotline', ask: 'How do I reach the GODELMANN advisory / service hotline?' },
+    ],
+    fachkunde: [
+      { label: 'Products', ask: 'Which Godelmann products are relevant for object planning?' },
+      { label: 'Object planning topics', ask: 'Which topics and solutions does Godelmann offer for object planning?' },
+      { label: 'Media library (downloads, tender texts, BIM/CAD)', ask: 'What is in the Godelmann media library — tender texts, datasheets, BIM and CAD data?' },
+      { label: 'References', ask: 'Show me Godelmann reference projects, e.g. for public spaces.' },
+      { label: 'Find a contact person', special: 'plz' },
+    ],
+  },
+};
+
+const WEICHE_LABELS: Record<'de' | 'en', { fach: string; end: string }> = {
+  de: { fach: 'Fachkunde', end: 'Endkunde' },
+  en: { fach: 'Trade professional', end: 'Private customer' },
+};
+
+const PLZ_PROMPT: Record<'de' | 'en', string> = {
+  de: 'Bitte geben Sie Ihre Postleitzahl ein, dann nenne ich Ihnen Ihren zustaendigen Ansprechpartner.',
+  en: 'Please enter your postal code and I will name your responsible contact person.',
+};
+
+// Platzhalter bis die Vertriebs-Adressliste (PLZ -> Ansprechpartner) vorliegt.
+const PLZ_PLACEHOLDER: Record<'de' | 'en', string> = {
+  de: 'Danke! Die persoenliche Ansprechpartner-Zuordnung nach Postleitzahl wird gerade eingerichtet — die Vertriebs-Adressliste folgt in Kuerze. Bis dahin beantworte ich Ihre fachliche Frage gerne direkt hier, oder Sie fragen mich nach den allgemeinen Kontaktmoeglichkeiten von GODELMANN.',
+  en: 'Thank you! The personal contact assignment by postal code is being set up — the sales address list will follow shortly. In the meantime I am happy to answer your technical question directly here, or ask me for GODELMANN\'s general contact options.',
+};
+
+// Heikes Stichwortlisten fuer die automatische Zielgruppen-Erkennung bei Freitext.
+const FACHKUNDE_KW = ['ausschreibung', 'lv ', 'bim', 'cad', 'dwg', 'architekt', 'planer', 'objekt', 'projekt', 'ingenieur', 'datenblatt', 'fachkunde', 'gewerblich', 'ausschreibungstext'];
+const ENDKUNDE_KW = ['terrasse', 'garten', 'einfahrt', 'gestaltung', 'ideen', 'hausbau', 'aussenanlage', 'aussenbereich', 'privat', 'endkunde', 'haus '];
+
+function classifyBranch(text: string): Branch | null {
+  const t = ` ${text.toLowerCase()} `;
+  if (FACHKUNDE_KW.some((k) => t.includes(k))) return 'fachkunde';
+  if (ENDKUNDE_KW.some((k) => t.includes(k))) return 'endkunde';
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Markdown-Mini-Renderer (sanitized): erst HTML-escapen, dann **fett**,
@@ -317,6 +404,14 @@ const STYLE = /* css */ `
   .msg { max-width: 86%; padding: 8px 12px; border-radius: 10px; overflow-wrap: break-word; }
   .msg.user { align-self: flex-end; background: var(--_accent); color: #fff; border-bottom-right-radius: 3px; }
   .msg.assistant { align-self: flex-start; background: #fff; border: 1px solid #e3e3e3; border-bottom-left-radius: 3px; }
+  .quickreplies { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; max-width: 92%; margin: 2px 0 2px; }
+  .qr {
+    border: 1px solid var(--_accent); color: var(--_accent); background: #fff;
+    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px;
+    line-height: 1.2; cursor: pointer; transition: background .12s, color .12s;
+  }
+  .qr:hover { background: var(--_accent); color: #fff; }
+  .qr:focus-visible { outline: 2px solid var(--_accent); outline-offset: 2px; }
   .msg.error { align-self: flex-start; background: #fdf0ee; border: 1px solid var(--_accent); color: #8c1c0b; }
   .msg p { margin: 0 0 8px; }
   .msg p:last-child { margin-bottom: 0; }
@@ -415,6 +510,11 @@ export class GodelmannChatbot extends HTMLElement {
   private abortCtrl: AbortController | null = null;
   private altchaPending: Promise<AltchaSolution | null> | null = null;
   private captchaDisabled = false;
+
+  // Guided-Selling-Flow (Ablaufplan Heike): Zielgruppen-Weiche vor dem KI-Chat.
+  private stage: 'greeting' | Branch = 'greeting';
+  private awaitingPlz = false;
+  private weicheRow: HTMLElement | null = null;
 
   constructor() {
     super();
@@ -584,6 +684,7 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleClose);
     if (this.messages.length === 0) {
       this.appendMessage({ role: 'assistant', text: this.greetingText, isGreeting: true });
+      this.showZielgruppenWeiche();
     }
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
     this.ensureAltcha();
@@ -609,7 +710,11 @@ export class GodelmannChatbot extends HTMLElement {
     lsRemove(LS_CONVERSATION_KEY);
     this.messages = [];
     this.messagesEl.replaceChildren();
+    this.stage = 'greeting';
+    this.awaitingPlz = false;
+    this.weicheRow = null;
     this.appendMessage({ role: 'assistant', text: this.greetingText, isGreeting: true });
+    this.showZielgruppenWeiche();
     this.input.focus();
   }
 
@@ -649,6 +754,63 @@ export class GodelmannChatbot extends HTMLElement {
     this.messagesEl.appendChild(el);
     this.scrollToEnd();
     return entry;
+  }
+
+  // --- Guided Selling / Zielgruppen-Weiche (Ablaufplan Heike, 20.07.) -------
+
+  private appendQuickReplies(items: { label: string; onClick: () => void }[], once = false): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'quickreplies';
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qr';
+      b.textContent = it.label;
+      b.addEventListener('click', () => {
+        if (once) row.remove();
+        it.onClick();
+      });
+      row.appendChild(b);
+    }
+    this.messagesEl.appendChild(row);
+    this.scrollToEnd();
+    return row;
+  }
+
+  /** Begruessung -> Buttons "Fachkunde / Endkunde" (Schritt 1 des Ablaufplans). */
+  private showZielgruppenWeiche(): void {
+    const l = WEICHE_LABELS[this.langKey];
+    this.weicheRow = this.appendQuickReplies(
+      [
+        { label: l.fach, onClick: () => this.chooseBranch('fachkunde') },
+        { label: l.end, onClick: () => this.chooseBranch('endkunde') },
+      ],
+      true,
+    );
+  }
+
+  /** Zielgruppe gewaehlt -> passendes Guided-Selling-Menue (Schritt 2/3). */
+  private chooseBranch(branch: Branch): void {
+    this.stage = branch;
+    this.weicheRow = null;
+    this.appendMessage({ role: 'assistant', text: BRANCH_INTRO[this.langKey][branch] });
+    this.appendQuickReplies(
+      BRANCH_ACTIONS[this.langKey][branch].map((a) => ({
+        label: a.label,
+        onClick: () => this.runQuickAction(a),
+      })),
+    );
+  }
+
+  private runQuickAction(a: QuickAction): void {
+    if (a.special === 'plz') {
+      // Fachkunde-Ansprechpartner: PLZ erfragen (Zuordnung folgt mit Adressliste).
+      this.awaitingPlz = true;
+      this.appendMessage({ role: 'assistant', text: PLZ_PROMPT[this.langKey] });
+      this.input.focus();
+      return;
+    }
+    if (a.ask) void this.startChat(a.ask);
   }
 
   private appendErrorMessage(text: string, retryText?: string): void {
@@ -721,6 +883,24 @@ export class GodelmannChatbot extends HTMLElement {
     const text = this.input.value.trim();
     if (text === '' || this.busy) return;
     this.input.value = '';
+
+    // Fachkunde-Ansprechpartner: erwartete PLZ-Eingabe -> Platzhalter (bis
+    // die Vertriebs-Adressliste vorliegt), kein KI-Call.
+    if (this.awaitingPlz) {
+      this.awaitingPlz = false;
+      this.appendMessage({ role: 'user', text });
+      this.appendMessage({ role: 'assistant', text: PLZ_PLACEHOLDER[this.langKey] });
+      return;
+    }
+
+    // Begruessung: Freitext -> Zielgruppe automatisch erkennen (Heikes
+    // Stichwortlisten) und stumm zuordnen; Weiche-Buttons entfernen.
+    if (this.stage === 'greeting') {
+      this.stage = classifyBranch(text) ?? 'endkunde';
+      this.weicheRow?.remove();
+      this.weicheRow = null;
+    }
+
     await this.startChat(text);
   }
 
