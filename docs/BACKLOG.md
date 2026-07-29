@@ -1,9 +1,16 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-07-29 (Paket-Version **0.0.3**)
+> Stand: 2026-07-29 (Paket-Version **0.0.4**)
 > Maintainer: Dietmar Scharf
 
 ## Releases
+
+- **0.0.4 (2026-07-29)** — Ansprechpartner-PLZ-Flow (deterministisch): „Ansprechpartner finden"
+  fragt die PLZ ab und ruft `GET {apiBase}/api/contact?plz=` → Ansprechpartner-Karte (Name/Region +
+  `tel:`/`mailto:`); Fallback wenn kein Treffer. Administrierbare Guided-Selling-Link-Ziele: laedt
+  `GET /api/webchat-config` beim Oeffnen, Buttons oeffnen die hinterlegten godelmann.de-URLs (Fallback =
+  geerdete AI-Frage). Renderer: Bilder `![](…)` inline + Markdown-Tabellen (Produktvergleich). Neue
+  Quick-Action „Produkte vergleichen". Grundlage: Lastenheft + Ablaufplan Heike.
 
 - **0.0.3 (2026-07-29)** — Zielgruppen-Weiche + Guided Selling (Ablaufplan Heike, 20.07.,
   `docs/ABLAUFPLAN-HEIKE-2026-07-20.md`). Begruessung fragt jetzt „Fachkunde oder Endkunde?"

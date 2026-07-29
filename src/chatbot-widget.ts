@@ -110,7 +110,9 @@ const TEXTS: Record<'de' | 'en', Texts> = {
 // ---------------------------------------------------------------------------
 
 type Branch = 'endkunde' | 'fachkunde';
-interface QuickAction { label: string; ask?: string; special?: 'plz' }
+// linkKey -> wenn in /api/webchat-config eine URL hinterlegt ist, oeffnet der
+// Button diese (administrierbar); sonst Fallback auf die geerdete Frage `ask`.
+interface QuickAction { label: string; ask?: string; special?: 'plz'; linkKey?: string }
 
 const BRANCH_INTRO: Record<'de' | 'en', Record<Branch, string>> = {
   de: {
@@ -127,18 +129,20 @@ const BRANCH_ACTIONS: Record<'de' | 'en', Record<Branch, QuickAction[]>> = {
   de: {
     endkunde: [
       { label: 'Produkte entdecken', ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?' },
-      { label: 'Inspirationen fuer Garten & Terrasse', ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.' },
-      { label: 'Gartenbuch', ask: 'Wo finde ich das aktuelle Godelmann-Gartenbuch zum Herunterladen?' },
-      { label: 'Neuheiten', ask: 'Was sind die aktuellen Neuheiten von Godelmann?' },
-      { label: 'Ideengarten besuchen', ask: 'Wo gibt es einen Godelmann-Ideengarten, den ich besuchen kann?' },
-      { label: 'Haendlersuche', ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?' },
+      { label: 'Inspirationen fuer Garten & Terrasse', linkKey: 'inspirationen', ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.' },
+      { label: 'Gartenbuch', linkKey: 'gartenbuch', ask: 'Wo finde ich das aktuelle Godelmann-Gartenbuch zum Herunterladen?' },
+      { label: 'Neuheiten', linkKey: 'neuheiten', ask: 'Was sind die aktuellen Neuheiten von Godelmann?' },
+      { label: 'Ideengarten besuchen', linkKey: 'ideengarten', ask: 'Wo gibt es einen Godelmann-Ideengarten, den ich besuchen kann?' },
+      { label: 'Produkte vergleichen', ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).' },
+      { label: 'Haendlersuche', linkKey: 'haendlersuche', ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?' },
       { label: 'Service-Hotline', ask: 'Wie erreiche ich die GODELMANN-Beratung bzw. Service-Hotline?' },
     ],
     fachkunde: [
       { label: 'Produkte', ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?' },
-      { label: 'Themen zur Objektplanung', ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?' },
-      { label: 'Mediathek (Downloads, Ausschreibung, BIM/CAD)', ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?' },
-      { label: 'Referenzen', ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.' },
+      { label: 'Themen zur Objektplanung', linkKey: 'objektplanung', ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?' },
+      { label: 'Mediathek (Downloads, Ausschreibung, BIM/CAD)', linkKey: 'mediathek', ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?' },
+      { label: 'Referenzen', linkKey: 'referenzen', ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.' },
+      { label: 'Produkte vergleichen', ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).' },
       { label: 'Ansprechpartner finden', special: 'plz' },
     ],
   },
@@ -172,12 +176,6 @@ const PLZ_PROMPT: Record<'de' | 'en', string> = {
   en: 'Please enter your postal code and I will name your responsible contact person.',
 };
 
-// Platzhalter bis die Vertriebs-Adressliste (PLZ -> Ansprechpartner) vorliegt.
-const PLZ_PLACEHOLDER: Record<'de' | 'en', string> = {
-  de: 'Danke! Die persoenliche Ansprechpartner-Zuordnung nach Postleitzahl wird gerade eingerichtet — die Vertriebs-Adressliste folgt in Kuerze. Bis dahin beantworte ich Ihre fachliche Frage gerne direkt hier, oder Sie fragen mich nach den allgemeinen Kontaktmoeglichkeiten von GODELMANN.',
-  en: 'Thank you! The personal contact assignment by postal code is being set up — the sales address list will follow shortly. In the meantime I am happy to answer your technical question directly here, or ask me for GODELMANN\'s general contact options.',
-};
-
 // Heikes Stichwortlisten fuer die automatische Zielgruppen-Erkennung bei Freitext.
 const FACHKUNDE_KW = ['ausschreibung', 'lv ', 'bim', 'cad', 'dwg', 'architekt', 'planer', 'objekt', 'projekt', 'ingenieur', 'datenblatt', 'fachkunde', 'gewerblich', 'ausschreibungstext'];
 const ENDKUNDE_KW = ['terrasse', 'garten', 'einfahrt', 'gestaltung', 'ideen', 'hausbau', 'aussenanlage', 'aussenbereich', 'privat', 'endkunde', 'haus '];
@@ -208,10 +206,16 @@ function escapeHtml(s: string): string {
 
 /** Inline-Markdown auf bereits HTML-escaptem Text. */
 function renderInline(escaped: string): string {
+  // Bilder ![alt](url) ZUERST (sonst faengt die Link-Regex den [alt](url)-Teil).
+  let out = escaped.replace(
+    /!\[([^\]]*)\]\((https?:\/\/[^\s()<>]+)\)/g,
+    (_m, alt: string, url: string) =>
+      `<img class="chatimg" src="${url}" alt="${alt}" loading="lazy" />`,
+  );
   // Links: nur absolute http/https-URLs; Ziel escaped (Quotes sind bereits
   // Entities, koennen das href-Attribut also nicht verlassen).
-  let out = escaped.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^\s()<>]+)\)/g,
+  out = out.replace(
+    /\[([^\]]+)\]\(((?:https?:\/\/|mailto:|tel:)[^\s()<>]+)\)/g,
     (_m, label: string, url: string) =>
       `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`,
   );
@@ -219,11 +223,12 @@ function renderInline(escaped: string): string {
   return out;
 }
 
-/** Blockweiser Renderer: Absaetze, ungeordnete/geordnete Listen. */
+/** Blockweiser Renderer: Absaetze, Listen, Tabellen (Produktvergleich). */
 function renderMarkdown(src: string): string {
   const html: string[] = [];
   let para: string[] = [];
   let list: { tag: 'ul' | 'ol'; items: string[] } | null = null;
+  let table: string[] | null = null;
 
   const flushPara = (): void => {
     if (para.length > 0) {
@@ -237,9 +242,29 @@ function renderMarkdown(src: string): string {
       list = null;
     }
   };
+  const flushTable = (): void => {
+    if (!table || table.length === 0) { table = null; return; }
+    const cell = (l: string): string[] => l.replace(/^\s*\||\|\s*$/g, '').split('|').map((c) => c.trim());
+    const isSep = (r: string[]): boolean => r.length > 0 && r.every((c) => c === '' || /^:?-{2,}:?$/.test(c));
+    const rows = table.map(cell).filter((r) => !isSep(r));
+    table = null;
+    if (rows.length === 0) return;
+    const head = rows[0].map((c) => `<th>${renderInline(escapeHtml(c))}</th>`).join('');
+    const body = rows.slice(1)
+      .map((r) => `<tr>${r.map((c) => `<td>${renderInline(escapeHtml(c))}</td>`).join('')}</tr>`)
+      .join('');
+    html.push(`<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`);
+  };
 
   for (const rawLine of src.split('\n')) {
     const line = rawLine.trimEnd();
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      flushPara(); flushList();
+      if (!table) table = [];
+      table.push(line);
+      continue;
+    }
+    flushTable();
     const ul = /^\s{0,3}[-*]\s+(.*)$/.exec(line);
     const ol = /^\s{0,3}\d+[.)]\s+(.*)$/.exec(line);
     if (ul) {
@@ -260,6 +285,7 @@ function renderMarkdown(src: string): string {
   }
   flushPara();
   flushList();
+  flushTable();
   return html.join('');
 }
 
@@ -417,6 +443,11 @@ const STYLE = /* css */ `
   .msg p:last-child { margin-bottom: 0; }
   .msg ul, .msg ol { margin: 4px 0; padding-left: 20px; }
   .msg a { color: var(--_accent); text-decoration: underline; }
+  .msg img.chatimg { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; display: block; }
+  .msg .tablewrap { overflow-x: auto; margin: 4px 0; }
+  .msg table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  .msg th, .msg td { border: 1px solid #e3e3e3; padding: 4px 7px; text-align: left; vertical-align: top; }
+  .msg th { background: #f6f6f6; font-weight: 600; }
   .msg.user a { color: #fff; }
   .msg .retry {
     display: block; margin-top: 8px; border: 1px solid var(--_accent);
@@ -515,6 +546,9 @@ export class GodelmannChatbot extends HTMLElement {
   private stage: 'greeting' | Branch = 'greeting';
   private awaitingPlz = false;
   private weicheRow: HTMLElement | null = null;
+  // Administrierbare Link-Ziele (GET /api/webchat-config): linkKey -> URL.
+  private links: Record<string, string> = {};
+  private configLoaded = false;
 
   constructor() {
     super();
@@ -686,6 +720,8 @@ export class GodelmannChatbot extends HTMLElement {
       this.appendMessage({ role: 'assistant', text: this.greetingText, isGreeting: true });
       this.showZielgruppenWeiche();
     }
+    // Administrierbare Link-Ziele laden (fire-and-forget; Fallback = AI-Frage).
+    void this.loadConfig();
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
     this.ensureAltcha();
     this.input.focus();
@@ -804,13 +840,68 @@ export class GodelmannChatbot extends HTMLElement {
 
   private runQuickAction(a: QuickAction): void {
     if (a.special === 'plz') {
-      // Fachkunde-Ansprechpartner: PLZ erfragen (Zuordnung folgt mit Adressliste).
+      // Fachkunde-Ansprechpartner: PLZ erfragen -> /api/contact (deterministisch).
       this.awaitingPlz = true;
       this.appendMessage({ role: 'assistant', text: PLZ_PROMPT[this.langKey] });
       this.input.focus();
       return;
     }
+    // Administrierbares Link-Ziel (falls hinterlegt) -> als klickbaren Link ausspielen.
+    const url = a.linkKey ? this.links[a.linkKey] : undefined;
+    if (url) {
+      const lead = this.langKey === 'en' ? 'Here you go' : 'Gerne — hier entlang';
+      this.appendMessage({ role: 'assistant', text: `${lead}: [${a.label}](${url})` });
+      return;
+    }
     if (a.ask) void this.startChat(a.ask);
+  }
+
+  /** Administrierbare Link-Ziele laden (GET /api/webchat-config), einmalig. */
+  private async loadConfig(): Promise<void> {
+    if (this.configLoaded) return;
+    this.configLoaded = true;
+    try {
+      const res = await fetch(`${this.apiBase}/api/webchat-config`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { links?: { link_key?: string; url?: string }[] };
+      for (const l of data.links ?? []) {
+        if (l.link_key && l.url) this.links[l.link_key] = l.url;
+      }
+    } catch {
+      /* Config optional — Buttons fallen auf die geerdete AI-Frage zurueck. */
+    }
+  }
+
+  /** Fachkunde-PLZ -> Ansprechpartner (GET /api/contact), deterministisch. */
+  private async lookupContact(plz: string): Promise<void> {
+    const clean = plz.replace(/\D/g, '').slice(0, 5);
+    const de = this.langKey !== 'en';
+    const pending = this.appendMessage({
+      role: 'assistant',
+      text: de ? 'Einen Moment, ich suche Ihren Ansprechpartner …' : 'One moment, looking up your contact …',
+    });
+    try {
+      const res = await fetch(`${this.apiBase}/api/contact?plz=${encodeURIComponent(clean)}`);
+      const data = res.ok ? ((await res.json()) as { contacts?: Array<Record<string, string>> }) : { contacts: [] };
+      const c = (data.contacts ?? [])[0];
+      if (c && c.name) {
+        const lines: string[] = [`**${c.name}**${c.role_title ? ` — ${c.role_title}` : ''}`];
+        if (c.region) lines.push(`${de ? 'Region' : 'Region'}: ${c.region}`);
+        if (c.phone) lines.push(`${de ? 'Telefon' : 'Phone'}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
+        if (c.email) lines.push(`E-Mail: [${c.email}](mailto:${c.email})`);
+        pending.text = `${de ? 'Ihr zustaendiger Ansprechpartner' : 'Your responsible contact'}:\n\n${lines.join('\n')}`;
+      } else {
+        pending.text = de
+          ? 'Zu dieser Postleitzahl habe ich aktuell keinen direkten Ansprechpartner hinterlegt. Die GODELMANN-Beratung hilft Ihnen gerne weiter — oder stellen Sie mir Ihre fachliche Frage direkt hier.'
+          : 'I do not have a direct contact for this postal code yet. The GODELMANN advisory will be happy to help — or just ask me your technical question here.';
+      }
+    } catch {
+      pending.text = de
+        ? 'Die Ansprechpartner-Suche ist gerade nicht erreichbar. Bitte versuchen Sie es spaeter erneut.'
+        : 'The contact lookup is currently unavailable. Please try again later.';
+    }
+    if (pending.el) pending.el.innerHTML = renderMarkdown(pending.text);
+    this.scrollToEnd();
   }
 
   private appendErrorMessage(text: string, retryText?: string): void {
@@ -889,7 +980,7 @@ export class GodelmannChatbot extends HTMLElement {
     if (this.awaitingPlz) {
       this.awaitingPlz = false;
       this.appendMessage({ role: 'user', text });
-      this.appendMessage({ role: 'assistant', text: PLZ_PLACEHOLDER[this.langKey] });
+      void this.lookupContact(text);
       return;
     }
 
