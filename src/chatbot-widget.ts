@@ -216,8 +216,19 @@ function renderInline(escaped: string): string {
   // Entities, koennen das href-Attribut also nicht verlassen).
   out = out.replace(
     /\[([^\]]+)\]\(((?:https?:\/\/|mailto:|tel:)[^\s()<>]+)\)/g,
-    (_m, label: string, url: string) =>
-      `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`,
+    (_m, label: string, url: string) => {
+      // Vorschau-Kette (v0.0.5): Link-gewrapptes Mini-Bild [![alt](thumb)](ziel)
+      // — Bild wurde oben bereits zu <img class="chatimg"> ersetzt. PDF-Ziele
+      // (Datenblaetter/Downloads) bekommen ein Badge via CSS ::after.
+      if (label.includes('class="chatimg"')) {
+        const pdf = /\.pdf(?:$|[?#])|\/content\/download\//i.test(url);
+        return (
+          `<a class="chatimg-link${pdf ? ' pdf' : ''}" href="${url}" ` +
+          `target="_blank" rel="noopener noreferrer">${label}</a>`
+        );
+      }
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    },
   );
   out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   return out;
@@ -443,7 +454,9 @@ const STYLE = /* css */ `
   .msg p:last-child { margin-bottom: 0; }
   .msg ul, .msg ol { margin: 4px 0; padding-left: 20px; }
   .msg a { color: var(--_accent); text-decoration: underline; }
-  .msg img.chatimg { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; display: block; }
+  .msg img.chatimg { max-height: 120px; width: auto; max-width: 100%; border-radius: 6px; margin: 4px 6px 4px 0; display: inline-block; vertical-align: top; }
+  .msg a.chatimg-link { position: relative; display: inline-block; line-height: 0; }
+  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: #E52D12; color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; border-radius: 3px; pointer-events: none; }
   .msg .tablewrap { overflow-x: auto; margin: 4px 0; }
   .msg table { border-collapse: collapse; width: 100%; font-size: 12px; }
   .msg th, .msg td { border: 1px solid #e3e3e3; padding: 4px 7px; text-align: left; vertical-align: top; }
