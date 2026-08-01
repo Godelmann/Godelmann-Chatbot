@@ -591,6 +591,11 @@ export class GodelmannChatbot extends HTMLElement {
   /** Waehrend des Wiederherstellens NICHT zurueckspeichern (sonst schreibt
    *  das Aufbauen des Verlaufs den gerade gelesenen Stand halbfertig um). */
   private restoring = false;
+  /** Liegt der Schreibfokus im Eingabefeld? Wird von focus/blur gesetzt und
+   *  NICHT aus `activeElement` abgeleitet: beim blur-Ereignis zeigt
+   *  `ShadowRoot.activeElement` noch auf das Feld, der Zustand waere dann
+   *  faelschlich "fokussiert" (live beobachtet 01.08.). */
+  private inputFocused = false;
 
   constructor() {
     super();
@@ -646,7 +651,7 @@ export class GodelmannChatbot extends HTMLElement {
       awaitingPlz: this.awaitingPlz,
       draft: el?.value ?? '',
       ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
-      ...(el && this.root.activeElement === el ? { focused: true } : {}),
+      ...(this.inputFocused ? { focused: true } : {}),
     };
     ssSet(SS_SESSION_KEY, JSON.stringify(data));
   }
@@ -693,9 +698,10 @@ export class GodelmannChatbot extends HTMLElement {
     }
 
     if (s.open) {
-      this.open();
+      this.open(false);
       const pos = s.cursor;
       if (s.focused) {
+        this.inputFocused = true;
         this.input.focus();
         if (pos) {
           const max = this.input.value.length;
@@ -785,9 +791,11 @@ export class GodelmannChatbot extends HTMLElement {
     // Nach JEDEM Zeichen sichern (nicht erst beim Absenden) und dazu die
     // Cursorposition, damit man nach einem Seitenwechsel mitten im Wort
     // weiterschreiben kann.
-    for (const ev of ['input', 'select', 'click', 'keyup', 'focus', 'blur']) {
+    for (const ev of ['input', 'select', 'click', 'keyup']) {
       this.input.addEventListener(ev, () => this.saveSession());
     }
+    this.input.addEventListener('focus', () => { this.inputFocused = true; this.saveSession(); });
+    this.input.addEventListener('blur', () => { this.inputFocused = false; this.saveSession(); });
     this.sendBtn = document.createElement('button');
     this.sendBtn.type = 'submit';
     this.sendBtn.className = 'send';
@@ -839,7 +847,10 @@ export class GodelmannChatbot extends HTMLElement {
     else this.open();
   }
 
-  private open(): void {
+  /** `fokussieren=false` beim Wiederherstellen: dort entscheidet der
+   *  gespeicherte Zustand, ob der Schreibfokus zurueck ins Feld darf. Sonst
+   *  wuerde ein Seitenwechsel den Fokus IMMER an den Chat reissen. */
+  private open(fokussieren = true): void {
     if (this.isOpen) return;
     this.isOpen = true;
     this.panel.hidden = false;
@@ -853,7 +864,7 @@ export class GodelmannChatbot extends HTMLElement {
     void this.loadConfig();
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
     this.ensureAltcha();
-    this.input.focus();
+    if (fokussieren) this.input.focus();
     this.saveSession();
     this.emit('gdm-chat:opened');
   }
