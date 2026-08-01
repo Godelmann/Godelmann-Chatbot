@@ -1,5 +1,15 @@
 # .xoder/BACKLOG.md — Godelmann-Chatbot (Projekt-Backlog, XODER-verwaltbar)
 
+## Webchat (Stand 01.08., SSoT `Godelmann/.xoder/docs/WEBCHAT.md`)
+
+- [ ] **PLZ→Ansprechpartner-Liste fehlt auf prod** — `webchat_contacts` ist dort leer, der
+  Fachkunde-Knopf antwortet daher „kein Ansprechpartner hinterlegt". Liste kommt von
+  GODELMANN (Vertrieb).
+- [ ] **Turn-Logging auf prod nicht konfiguriert** (`ai_logs.db` bleibt leer) — damit fehlt
+  der Nachweis, welches Modell dort tatsaechlich antwortet.
+- [ ] **Widget-Auslieferung cacht 1 h** (`max-age=3600`): Updates erreichen Besucher
+  verzoegert. Versionierten Dateinamen erwaegen.
+
 > XODER-Prinzip: Eintraege gehoeren ins Backlog der passenden Ebene (Landschaft/Meta →
 > `~/Projects/.xoder/BACKLOG.md`, Org → `Godelmann/.xoder/`, Projekt → HIER).
 > **Standalone-Autarkie:** Fehlen die Parent-Ebenen lokal, kommt ALLES hierher; Parent-Themen in die
