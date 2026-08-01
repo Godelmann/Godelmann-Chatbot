@@ -591,6 +591,13 @@ export class GodelmannChatbot extends HTMLElement {
   /** Waehrend des Wiederherstellens NICHT zurueckspeichern (sonst schreibt
    *  das Aufbauen des Verlaufs den gerade gelesenen Stand halbfertig um). */
   private restoring = false;
+  /** Sitzung nur EINMAL je Element-Instanz zurueckholen: connectedCallback
+   *  feuert auch, wenn das Element im DOM verschoben wird - sonst stuenden
+   *  Verlauf und Zielgruppen-Weiche doppelt da. */
+  private sessionRestored = false;
+  /** Zaehlt Unterhaltungen. Ein per "Neue Unterhaltung" abgebrochener Lauf
+   *  darf seine Fehlermeldung NICHT in die frische Unterhaltung schreiben. */
+  private convGen = 0;
   /** Liegt der Schreibfokus im Eingabefeld? Wird von focus/blur gesetzt und
    *  NICHT aus `activeElement` abgeleitet: beim blur-Ereignis zeigt
    *  `ShadowRoot.activeElement` noch auf das Feld, der Zustand waere dann
@@ -627,7 +634,10 @@ export class GodelmannChatbot extends HTMLElement {
     if (!this.rootDiv) this.buildDom();
     this.applyPosition();
     this.applyTexts();
-    this.restoreSession();
+    if (!this.sessionRestored) {
+      this.sessionRestored = true;
+      this.restoreSession();
+    }
   }
 
   // --- Sitzungs-Gedaechtnis (Seitenwechsel + Neuladen) ---------------------
@@ -643,7 +653,10 @@ export class GodelmannChatbot extends HTMLElement {
       // und wird beim Wiederherstellen ohnehin neu erzeugt.
       messages: this.messages.map((m) => ({
         role: m.role,
-        text: m.text,
+        // Assistenz-Text IMMER gestrippt sichern: waehrend des Streams steht in
+        // `text` noch der rohe Modell-Output samt <think>-Block. Ungestrippt
+        // gespeichert wuerde er beim Wiederherstellen im Kundenfenster landen.
+        text: m.role === 'assistant' ? visibleAnswer(m.text) : m.text,
         ...(m.isGreeting ? { isGreeting: true } : {}),
         ...(m.retryText ? { retryText: m.retryText } : {}),
       })),
@@ -682,6 +695,11 @@ export class GodelmannChatbot extends HTMLElement {
       for (const m of verlauf) {
         if (!m || typeof m.text !== 'string') continue;
         if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'error') continue;
+        if (m.role === 'error') {
+          // ueber appendErrorMessage, damit der "Erneut versuchen"-Knopf mitkommt
+          this.appendErrorMessage(m.text, m.retryText);
+          continue;
+        }
         this.appendMessage({ role: m.role, text: m.text, ...(m.isGreeting ? { isGreeting: true } : {}) });
       }
       this.stage = s.stage === 'endkunde' || s.stage === 'fachkunde' ? s.stage : 'greeting';
@@ -698,7 +716,7 @@ export class GodelmannChatbot extends HTMLElement {
     }
 
     if (s.open) {
-      this.open(false);
+      this.open(false, false);
       const pos = s.cursor;
       if (s.focused) {
         this.inputFocused = true;
@@ -752,7 +770,10 @@ export class GodelmannChatbot extends HTMLElement {
     this.panel = document.createElement('div');
     this.panel.className = 'panel';
     this.panel.setAttribute('role', 'dialog');
-    this.panel.setAttribute('aria-modal', 'true');
+    // Startwert 'false': ein wiederhergestelltes Panel ohne Fokus darf die
+    // uebrige Seite nicht fuer Screenreader ausblenden. Beim Oeffnen und beim
+    // Hineinfokussieren wird auf 'true' gehoben.
+    this.panel.setAttribute('aria-modal', 'false');
     this.panel.hidden = true;
     this.panel.addEventListener('keydown', (e) => this.onPanelKeydown(e));
 
@@ -794,7 +815,12 @@ export class GodelmannChatbot extends HTMLElement {
     for (const ev of ['input', 'select', 'click', 'keyup']) {
       this.input.addEventListener(ev, () => this.saveSession());
     }
-    this.input.addEventListener('focus', () => { this.inputFocused = true; this.saveSession(); });
+    this.input.addEventListener('focus', () => {
+      this.inputFocused = true;
+      // Sobald der Schreibfokus drin ist, gilt das Panel als modal.
+      this.panel.setAttribute('aria-modal', 'true');
+      this.saveSession();
+    });
     this.input.addEventListener('blur', () => { this.inputFocused = false; this.saveSession(); });
     this.sendBtn = document.createElement('button');
     this.sendBtn.type = 'submit';
@@ -850,7 +876,7 @@ export class GodelmannChatbot extends HTMLElement {
   /** `fokussieren=false` beim Wiederherstellen: dort entscheidet der
    *  gespeicherte Zustand, ob der Schreibfokus zurueck ins Feld darf. Sonst
    *  wuerde ein Seitenwechsel den Fokus IMMER an den Chat reissen. */
-  private open(fokussieren = true): void {
+  private open(fokussieren = true, alsBenutzeraktion = true): void {
     if (this.isOpen) return;
     this.isOpen = true;
     this.panel.hidden = false;
@@ -863,10 +889,16 @@ export class GodelmannChatbot extends HTMLElement {
     // Administrierbare Link-Ziele laden (fire-and-forget; Fallback = AI-Frage).
     void this.loadConfig();
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
-    this.ensureAltcha();
-    if (fokussieren) this.input.focus();
+    // Nur bei echter Benutzeraktion: sonst rechnet jede Folgeseite ungefragt.
+    if (alsBenutzeraktion) this.ensureAltcha();
+    if (fokussieren) {
+      this.panel.setAttribute('aria-modal', 'true');
+      this.input.focus();
+    }
     this.saveSession();
-    this.emit('gdm-chat:opened');
+    // Beim Wiederherstellen hat der Besucher nichts geoeffnet - weder ein
+    // Ereignis melden noch ungefragt Rechenarbeit anwerfen.
+    if (alsBenutzeraktion) this.emit('gdm-chat:opened');
   }
 
   private close(): void {
@@ -883,10 +915,15 @@ export class GodelmannChatbot extends HTMLElement {
   private resetConversation(): void {
     this.abortCtrl?.abort();
     this.abortCtrl = null;
+    this.convGen++;
     this.busy = false;
     this.sendBtn.disabled = false;
     lsRemove(LS_CONVERSATION_KEY);
     ssRemove(SS_SESSION_KEY);
+    // Auch den Entwurf verwerfen: sonst schreibt der naechste saveSession()
+    // den alten Text sofort wieder in den Speicher - "Neue Unterhaltung"
+    // waere dann keine.
+    if (this.input) this.input.value = '';
     this.messages = [];
     this.messagesEl.replaceChildren();
     this.stage = 'greeting';
@@ -1054,10 +1091,13 @@ export class GodelmannChatbot extends HTMLElement {
     }
     if (pending.el) pending.el.innerHTML = renderMarkdown(pending.text);
     this.scrollToEnd();
+    // Sonst haengt nach einem Seitenwechsel dauerhaft "Einen Moment, ich
+    // suche ..." im Verlauf - die Antwort selbst waere nie gespeichert worden.
+    this.saveSession();
   }
 
   private appendErrorMessage(text: string, retryText?: string): void {
-    const entry = this.appendMessage({ role: 'error', text });
+    const entry = this.appendMessage({ role: 'error', text, ...(retryText ? { retryText } : {}) });
     if (retryText && entry.el) {
       entry.retryText = retryText;
       const btn = document.createElement('button');
@@ -1149,6 +1189,10 @@ export class GodelmannChatbot extends HTMLElement {
 
   private async startChat(text: string): Promise<void> {
     if (this.busy) return;
+    // Merken, zu welcher Unterhaltung dieser Lauf gehoert: bricht ihn
+    // "Neue Unterhaltung" ab, darf seine Fehlermeldung nicht mehr in die
+    // frische Unterhaltung geschrieben werden.
+    const gen = this.convGen;
     this.busy = true;
     this.sendBtn.disabled = true;
 
@@ -1161,6 +1205,8 @@ export class GodelmannChatbot extends HTMLElement {
       await this.requestChat(text, assistant, true);
       this.emit('gdm-chat:response-received', { message: assistant.text });
     } catch (err) {
+      // Lauf gehoert zu einer inzwischen verworfenen Unterhaltung: still enden.
+      if (gen !== this.convGen) return;
       const t = this.texts;
       const kind: ChatErrorKind = err instanceof ChatError ? err.kind : 'generic';
       // Leere Assistent-Blase entfernen; Teilantworten bleiben stehen.
@@ -1329,6 +1375,10 @@ export class GodelmannChatbot extends HTMLElement {
       assistant.el.innerHTML = renderMarkdown(assistant.text);
       this.scrollToEnd();
     }
+    // Ohne dieses Sichern verschwindet die fertige Antwort beim naechsten
+    // Seitenwechsel: die Blase wurde beim Anlegen noch LEER gespeichert und
+    // beim Wiederherstellen als "abgebrochen" verworfen.
+    this.saveSession();
   }
 
   // --- Events ----------------------------------------------------------------
