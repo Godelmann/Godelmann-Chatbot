@@ -113,10 +113,12 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
   **echten Link-Ziel-URLs** (Heike) in `webchat_links` eintragen.
 - **Prod-Rollout: erledigt** (01.08.2026). Widget und Server laufen auf `godelmann-prod`
   (`chatbot.godelmann.net`, Fassung 0.0.7), `CONTACT_SUPABASE_URL` ist gesetzt.
-  **Anmerkung zum Modell:** `CHATBOT_MODEL` ist auf prod **nicht** gesetzt — prod laeuft ueber den
-  Code-Standard `DEFAULT_CHAT_MODEL = "gpt-5.6"`, test setzt denselben Wert zusaetzlich ausdruecklich.
-  Heute funktional identisch, aber fragil: wer den Code-Standard aendert, aendert prod still mit.
-  Offen: `CHATBOT_MODEL` auch auf prod explizit setzen (Env-Aenderung braucht Freigabe).
+  **Modell:** `CHATBOT_MODEL=gpt-5.6` ist auf **beiden** Stufen ausdruecklich gesetzt (prod nachgezogen
+  am 01.08.2026 mit Freigabe). Vorher lief prod nur ueber den Code-Standard `DEFAULT_CHAT_MODEL` —
+  funktional gleich, aber fragil, weil eine Aenderung am Code-Standard prod still mitgezogen haette.
+  Verifiziert an der Umgebung des **laufenden Prozesses** (`/proc/<pid>/environ`), nicht an der
+  `.env`-Datei, plus Ende-zu-Ende-Test ueber `https://chatbot.godelmann.net/api/chat` (ALTCHA geloest,
+  fachlich korrekte Antwort mit belegter Produktempfehlung).
 - E2E-Abnahme laut `docs/ANFORDERUNGEN.md` formal abschliessen (grounded-Antwort mit Quelle ueber den
   vhost, Rate-Limit-Negativtest, CORS-Negativtest, Browser-E2E auf Test-Einbettungsseite).
 - Restliche Ausbaustufen aus dem GoCreate-Websites-Backlog (Sub-App 3: Chat-Reviews/Kuratierung, Cost-Tracking).
