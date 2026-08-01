@@ -36,6 +36,7 @@ Versionierung): [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md).
 | [`.xoder/XODER.md`](.xoder/XODER.md) | Prinzip, Datei-Inventar, Rolle/Befunde, Kern-Konventionen (Meta-Einstieg) |
 | [`.xoder/NETWORK.md`](.xoder/NETWORK.md) | Topologie-SSoT: Widget-ES-Modul, Embed, `godelmann-chatbot-server` (:3011), DGX-RAG, SSH-2-Hop |
 | [`.xoder/HEALTHCHECK.md`](.xoder/HEALTHCHECK.md) · [`MONITORING.md`](.xoder/MONITORING.md) · [`TESTING.md`](.xoder/TESTING.md) · [`TIME.md`](.xoder/TIME.md) | Health-Sweep · Wachpunkte · Gates (tsc/lint/Bundle) · Zeit/NTP |
+| [`.xoder/VERSIONING.md`](.xoder/VERSIONING.md) | Fassungs-Logik: erhoeht wird bewusst per `npm run release:patch`, nie durch Build oder Deploy |
 | [`.xoder/DEPLOYMENT.md`](.xoder/DEPLOYMENT.md) | Deploy-Flow: Frontend `deploy-godelmann.sh chatbot` · Backend `deploy-spass.sh godelmann-chatbot` (Namen unterscheiden sich!) |
 | [`.xoder/BACKLOG.md`](.xoder/BACKLOG.md) | Betriebs-Backlog (inkl. Sektion `PARENT`) |
 | [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md) | Verbindliche Spezifikation (Web-Components-Pflicht, API-Vertrag, Abnahme) |

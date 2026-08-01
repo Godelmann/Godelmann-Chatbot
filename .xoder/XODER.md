@@ -38,6 +38,7 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
 | `.xoder/NETWORK.md` | Topologie-SSoT: Widget-ES-Modul, Einbettung godelmann.de/Ibexa, `godelmann-chatbot-server` (SPASS :3011), DGX-RAG, Ingress/Egress, SSH-2-Hop ueber control |
 | `.xoder/BACKLOG.md` | Projekt-Backlog (Betriebs-Sicht) inkl. Pflicht-Sektion `PARENT`; Fach-Backlog = `docs/BACKLOG.md` |
 | `.xoder/HEALTHCHECK.md` | Ende-zu-Ende-Sweep (Widget-Modul erreichbar, `/api/chat` SSE, ALTCHA, CORS, Bundle-Gate) |
+| `.xoder/VERSIONING.md` | Fassungs-Logik dieser Anwendung; org-weite Regeln in `Godelmann/.xoder/VERSIONING.md` |
 | `.xoder/DEPLOYMENT.md` | Deploy-Flow: **Frontend** `deploy-godelmann.sh chatbot` vs. **Backend** `deploy-spass.sh godelmann-chatbot` (verschiedene Skripte, verschiedene Namen), Reihenfolge, Fassungspruefung |
 | `.xoder/MONITORING.md` | Laufende Wachpunkte (chatbot-server-Unit, Rate-Limit-429, ALTCHA-Reject-Quote, Cert-Ablauf) |
 | `.xoder/TESTING.md` | Gates (`tsc --noEmit`, ESLint, Vite lib-Build, Bundle < 80 kB) + externe E2E-Abnahme |
