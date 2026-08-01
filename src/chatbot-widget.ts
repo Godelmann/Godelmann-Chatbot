@@ -12,6 +12,32 @@
 
 const TAG_NAME = 'godelmann-chatbot';
 const LS_CONVERSATION_KEY = 'gdm-chat-conversation-id';
+
+/**
+ * Sitzungs-Gedaechtnis des Chats (sessionStorage, gilt pro Tab).
+ *
+ * godelmann.de laedt bei JEDEM Seitenwechsel komplett neu — ohne dieses
+ * Gedaechtnis faengt ein Beratungsgespraech auf jeder Unterseite wieder bei
+ * der Begruessung an. Gesichert wird alles, was den Gespraechszustand
+ * ausmacht: offen/zu, Verlauf, Stand der Zielgruppen-Weiche, PLZ-Erwartung
+ * und die angefangene Eingabe — letztere nach JEDEM getippten Zeichen.
+ *
+ * Bewusst sessionStorage statt localStorage: endet mit dem Tab, damit kein
+ * Gespraech tagelang im Browser liegen bleibt.
+ */
+const SS_SESSION_KEY = 'gdm-chat-session';
+
+interface StoredSession {
+  open: boolean;
+  messages: { role: 'user' | 'assistant' | 'error'; text: string; isGreeting?: boolean; retryText?: string }[];
+  stage: 'greeting' | 'endkunde' | 'fachkunde';
+  awaitingPlz: boolean;
+  draft: string;
+  /** Cursor-/Auswahlposition — sonst springt der Cursor ans Ende. */
+  cursor?: { start: number; end: number };
+  /** Lag der Schreibfokus im Eingabefeld? Nur dann wird er zurueckgeholt. */
+  focused?: boolean;
+}
 const REQUEST_TIMEOUT_MS = 120_000;
 const MAX_MESSAGE_CHARS = 2000;
 const PRIVACY_URL = 'https://www.godelmann.de/de/datenschutz';
@@ -562,6 +588,9 @@ export class GodelmannChatbot extends HTMLElement {
   // Administrierbare Link-Ziele (GET /api/webchat-config): linkKey -> URL.
   private links: Record<string, string> = {};
   private configLoaded = false;
+  /** Waehrend des Wiederherstellens NICHT zurueckspeichern (sonst schreibt
+   *  das Aufbauen des Verlaufs den gerade gelesenen Stand halbfertig um). */
+  private restoring = false;
 
   constructor() {
     super();
@@ -593,6 +622,87 @@ export class GodelmannChatbot extends HTMLElement {
     if (!this.rootDiv) this.buildDom();
     this.applyPosition();
     this.applyTexts();
+    this.restoreSession();
+  }
+
+  // --- Sitzungs-Gedaechtnis (Seitenwechsel + Neuladen) ---------------------
+
+  /** Sichert den Gespraechszustand. Wird bei jeder Aenderung aufgerufen —
+   *  auch bei jedem getippten Zeichen. */
+  private saveSession(): void {
+    if (this.restoring) return;
+    const el = this.input;
+    const data: StoredSession = {
+      open: this.isOpen,
+      // `el` (das DOM-Element) darf NICHT mit — es ist nicht serialisierbar
+      // und wird beim Wiederherstellen ohnehin neu erzeugt.
+      messages: this.messages.map((m) => ({
+        role: m.role,
+        text: m.text,
+        ...(m.isGreeting ? { isGreeting: true } : {}),
+        ...(m.retryText ? { retryText: m.retryText } : {}),
+      })),
+      stage: this.stage,
+      awaitingPlz: this.awaitingPlz,
+      draft: el?.value ?? '',
+      ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
+      ...(el && this.root.activeElement === el ? { focused: true } : {}),
+    };
+    ssSet(SS_SESSION_KEY, JSON.stringify(data));
+  }
+
+  /** Holt das Gespraech zurueck: Panel-Zustand, Verlauf, Stand der
+   *  Zielgruppen-Weiche, Eingabe samt Cursor. */
+  private restoreSession(): void {
+    const raw = ssGet(SS_SESSION_KEY);
+    if (!raw) return;
+    let s: StoredSession;
+    try {
+      s = JSON.parse(raw) as StoredSession;
+    } catch {
+      ssRemove(SS_SESSION_KEY);
+      return;
+    }
+    const verlauf = Array.isArray(s.messages) ? s.messages : [];
+    // Eine leere Bot-Blase bedeutet: beim Neuladen lief gerade eine Antwort.
+    // Ohne laufende Anfrage wuerde sie ewig leer stehen bleiben.
+    while (verlauf.length && verlauf[verlauf.length - 1]?.role === 'assistant'
+           && !verlauf[verlauf.length - 1]?.text?.trim()) {
+      verlauf.pop();
+    }
+    if (verlauf.length === 0 && !s.draft) return;
+
+    this.restoring = true;
+    try {
+      for (const m of verlauf) {
+        if (!m || typeof m.text !== 'string') continue;
+        if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'error') continue;
+        this.appendMessage({ role: m.role, text: m.text, ...(m.isGreeting ? { isGreeting: true } : {}) });
+      }
+      this.stage = s.stage === 'endkunde' || s.stage === 'fachkunde' ? s.stage : 'greeting';
+      this.awaitingPlz = s.awaitingPlz === true;
+      // Passende Auswahl-Schaltflaechen wieder anbieten, sonst haengt das
+      // Gespraech ohne Weiterweg fest.
+      if (!this.awaitingPlz) {
+        if (this.stage === 'greeting') this.showZielgruppenWeiche();
+        else this.showBranchActions(this.stage);
+      }
+      if (typeof s.draft === 'string') this.input.value = s.draft;
+    } finally {
+      this.restoring = false;
+    }
+
+    if (s.open) {
+      this.open();
+      const pos = s.cursor;
+      if (s.focused) {
+        this.input.focus();
+        if (pos) {
+          const max = this.input.value.length;
+          this.input.setSelectionRange(Math.min(pos.start, max), Math.min(pos.end, max));
+        }
+      }
+    }
   }
 
   attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
@@ -672,6 +782,12 @@ export class GodelmannChatbot extends HTMLElement {
         this.form.requestSubmit();
       }
     });
+    // Nach JEDEM Zeichen sichern (nicht erst beim Absenden) und dazu die
+    // Cursorposition, damit man nach einem Seitenwechsel mitten im Wort
+    // weiterschreiben kann.
+    for (const ev of ['input', 'select', 'click', 'keyup', 'focus', 'blur']) {
+      this.input.addEventListener(ev, () => this.saveSession());
+    }
     this.sendBtn = document.createElement('button');
     this.sendBtn.type = 'submit';
     this.sendBtn.className = 'send';
@@ -738,6 +854,7 @@ export class GodelmannChatbot extends HTMLElement {
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
     this.ensureAltcha();
     this.input.focus();
+    this.saveSession();
     this.emit('gdm-chat:opened');
   }
 
@@ -748,6 +865,7 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-expanded', 'false');
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleOpen);
     this.bubbleBtn.focus();
+    this.saveSession();
     this.emit('gdm-chat:closed');
   }
 
@@ -757,6 +875,7 @@ export class GodelmannChatbot extends HTMLElement {
     this.busy = false;
     this.sendBtn.disabled = false;
     lsRemove(LS_CONVERSATION_KEY);
+    ssRemove(SS_SESSION_KEY);
     this.messages = [];
     this.messagesEl.replaceChildren();
     this.stage = 'greeting';
@@ -802,6 +921,7 @@ export class GodelmannChatbot extends HTMLElement {
     this.messages.push(entry);
     this.messagesEl.appendChild(el);
     this.scrollToEnd();
+    this.saveSession();
     return entry;
   }
 
@@ -843,6 +963,13 @@ export class GodelmannChatbot extends HTMLElement {
     this.stage = branch;
     this.weicheRow = null;
     this.appendMessage({ role: 'assistant', text: BRANCH_INTRO[this.langKey][branch] });
+    this.showBranchActions(branch);
+    this.saveSession();
+  }
+
+  /** Das Menue eines Zweigs anzeigen. Eigene Methode, weil es nach einem
+   *  Seitenwechsel ohne erneute Begruessung wiederhergestellt werden muss. */
+  private showBranchActions(branch: Branch): void {
     this.appendQuickReplies(
       BRANCH_ACTIONS[this.langKey][branch].map((a) => ({
         label: a.label,
@@ -857,6 +984,7 @@ export class GodelmannChatbot extends HTMLElement {
       this.awaitingPlz = true;
       this.appendMessage({ role: 'assistant', text: PLZ_PROMPT[this.langKey] });
       this.input.focus();
+      this.saveSession();
       return;
     }
     // Administrierbares Link-Ziel (falls hinterlegt) -> als klickbaren Link ausspielen.
@@ -1230,6 +1358,29 @@ function visibleAnswer(raw: string): string {
     t = t.slice(0, lower.indexOf('<think>'));
   }
   return t.replace(/^[\s\n]+/, '');
+}
+
+// sessionStorage kann — wie localStorage — in Privacy-Modi werfen.
+function ssGet(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function ssSet(key: string, value: string): void {
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+function ssRemove(key: string): void {
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
 }
 
 // localStorage kann in Privacy-Modi werfen — defensiv kapseln.
