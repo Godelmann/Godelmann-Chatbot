@@ -1,3 +1,4 @@
+declare const __WIDGET_VERSION__: string
 /**
  * <godelmann-chatbot> — oeffentliches KI-Chat-Widget fuer godelmann.de.
  *
@@ -631,6 +632,8 @@ export class GodelmannChatbot extends HTMLElement {
   }
 
   connectedCallback(): void {
+    // Ausgelieferte Fassung von aussen ablesbar machen (Abgleich test/prod).
+    this.setAttribute('data-version', __WIDGET_VERSION__)
     if (!this.rootDiv) this.buildDom();
     this.applyPosition();
     this.applyTexts();
