@@ -7,6 +7,8 @@
 > (Fach-Backlog: [`docs/BACKLOG.md`](docs/BACKLOG.md)) · Healthcheck/Monitoring/Testing analog in `.xoder/`.
 > Nicht-Claude-Agents: [`AGENTS.md`](AGENTS.md).
 
+> **Oeffentlicher KI-Berater:** Die verbindlichen Regeln (Rangfolge der Wahrheitsquellen — Produkt-DB vor RAG-Snapshot —, Markennamen NIE uebersetzen, Ablauf Fachkunde/Endkunde, Modellwahl, Betriebs-Fallen, Pflicht-Regressionstest) stehen org-weit in **`Godelmann/.xoder/docs/WEBCHAT.md`**. Vor jeder Aenderung an Chat, Prompt, Modell, Wissensbasis oder RAG-Index dort nachlesen und danach fortschreiben.
+
 KI-Chat-Widget für godelmann.de — Web Component `<godelmann-chatbot>` in
 Vanilla TypeScript (WHATWG Custom Element + Shadow DOM, KEINE
 Framework-Dependency). Verbindliche Spezifikation: `docs/ANFORDERUNGEN.md`;
