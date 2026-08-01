@@ -1,10 +1,23 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-07-29 (Paket-Version **0.0.4**)
+> Stand: 2026-08-01 (Paket-Version **0.0.6**)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.6 (2026-08-01)** — **Chat ueberlebt Seitenwechsel und Neuladen.** godelmann.de
+  laedt bei jedem Seitenwechsel komplett neu; ein Beratungsgespraech fing dadurch auf
+  jeder Unterseite wieder bei der Begruessung an. Panel-Zustand, Verlauf, Stand der
+  Zielgruppen-Weiche, PLZ-Erwartung und die angefangene Eingabe liegen jetzt im
+  `sessionStorage` (Eingabe nach JEDEM Zeichen, samt Cursorposition). Der Schreibfokus
+  kehrt nur zurueck, wenn er vorher im Feld lag — sonst wuerde der Chat ihn jemandem
+  klauen, der gerade woanders tippt. Beim Wiederherstellen kommen die passenden
+  Auswahl-Schaltflaechen zurueck; eine leere Bot-Blase (Neuladen mitten in der Antwort)
+  wird verworfen. Zwei Fallen dabei: `ShadowRoot.activeElement` zeigt beim blur noch aufs
+  Feld (eigener Merker), und `open()` fokussierte grundsaetzlich (jetzt steuerbar).
+  ⚠ **Widget-Auslieferung cacht 1 h** (`cache-control: public, max-age=3600`) — Updates
+  erreichen Besucher entsprechend verzoegert; fuer dringende Korrekturen einplanen.
+- **0.0.5** — Umlaut-/Modell-Angleich (siehe spass `godelmann-chatbot-server`).
 - **0.0.4 (2026-07-29)** — Ansprechpartner-PLZ-Flow (deterministisch): „Ansprechpartner finden"
   fragt die PLZ ab und ruft `GET {apiBase}/api/contact?plz=` → Ansprechpartner-Karte (Name/Region +
   `tel:`/`mailto:`); Fallback wenn kein Treffer. Administrierbare Guided-Selling-Link-Ziele: laedt
