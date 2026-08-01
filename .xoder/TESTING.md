@@ -1,5 +1,11 @@
 # TESTING.md — Godelmann-Chatbot
 
+> **Gesamtkontext (Org-Ebene):** [`Godelmann/.xoder/TESTING.md`](../../.xoder/TESTING.md) —
+> die vier Prüfebenen, **wo** der Regressionstest der KI-Berater laufen muss, die SPA-Falle
+> (HTTP 200 beweist keinen Endpunkt) und der Fassungsvergleich über Commits statt Nummern.
+> Dieses Dokument hier beschreibt die Gates **dieser** Anwendung.
+
+
 Gates + Abnahme. Konventionen/Details: `CLAUDE.md`, `docs/ANFORDERUNGEN.md`.
 
 ## Pflicht-Gates vor Commit
@@ -39,3 +45,21 @@ npm run preview   # Vorschau des Prod-Builds
 ## Gefahrlose Stage-Pruefungen
 - `GET /chatbot-widget.v1.js` (200) + `GET /altcha/challenge` (JSON) auf beiden Stages (`.xoder/HEALTHCHECK.md`).
 - chatbot-server-Status read-only (`systemctl status`/`journalctl`) via 2-Hop ueber control — keine Mutationen.
+
+## Pflicht-Regressionstest der KI-Berater
+
+Vor jeder Änderung an Chat, Prompt, Modell, Wissensbasis oder RAG-Index:
+
+```sh
+# auf control:
+scp -i /root/.ssh/platform /projects/spass/scripts/verify-ai-channels.py root@10.0.0.4:/tmp/
+ssh -i /root/.ssh/platform root@10.0.0.4 'cd /tmp && python3 verify-ai-channels.py'
+```
+
+Erwartet: **„alle Pflicht-Checks gruen"**.
+
+> **Nur auf `platform-test` ausführen.** Auf control meldet derselbe Test „Connection refused"
+> für beide Chatbots und „2 Regression(en)" — die Dienste (:3011/:3012) laufen dort nicht.
+> Das ist kein Anwendungsfehler (Beleg 01.08.2026).
+
+Regelwerk, das der Test durchsetzt: `Godelmann/.xoder/docs/WEBCHAT.md`.

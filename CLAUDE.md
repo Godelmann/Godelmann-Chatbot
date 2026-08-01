@@ -37,6 +37,20 @@ npm run lint         # ESLint
 Teil des BLUEITS/REDITS Fleet-Audits. **0 Findings** (0). Belege: `docs/FINDINGS-2026-07-12.md` · Tracker: `docs/AUDIT-2026-07-12.md` · Register: `BLUEITS-GmbH/.xoder/FINDINGS.md`.
 Vor Änderungen an Sicherheits-Code die Findings prüfen; Erledigtes als „resolved" markieren.
 
+## Tests (PFLICHT vor Chat-/Prompt-/Modell-Aenderungen)
+
+- **Gates dieses Repos:** [`.xoder/TESTING.md`](.xoder/TESTING.md)
+- **Regressionstest der KI-Berater** — prueft BEIDE Chatbots + die Stufen-Gates in EINEM Lauf.
+  Nur auf `platform-test` ausfuehren (auf control meldet er faelschlich „Connection refused"):
+  ```sh
+  scp -i /root/.ssh/platform /projects/spass/scripts/verify-ai-channels.py root@10.0.0.4:/tmp/
+  ssh -i /root/.ssh/platform root@10.0.0.4 'cd /tmp && python3 verify-ai-channels.py'
+  ```
+  Erwartet: **„alle Pflicht-Checks gruen"**.
+- **Gesamtkontext (Org):** `Godelmann/.xoder/TESTING.md` — Pruefebenen, SPA-Falle
+  (HTTP 200 beweist keinen Endpunkt), Fassungsvergleich ueber Commits statt Nummern.
+- **Regelwerk:** `Godelmann/.xoder/docs/WEBCHAT.md`.
+
 ## Git-Konventionen (XODER-Standard)
 
 Verbindlich fuer Commits/PRs in diesem Repo: siehe org-weites `.xoder/GITHUB.md`.

@@ -30,3 +30,17 @@ zusaetzlich `CLAUDE.md`. **Nichts hier duplizieren — dies ist ein duenner Zeig
 - **Commits/PRs:** Conventional Commits, ASCII, **KEIN AI-/Co-Authored-By-Footer** (flottenweite
   XODER-Pflicht). Details: org-weites `Godelmann/.xoder/GITHUB.md` (falls ausgecheckt).
 - **CI:** Akzentfarbe nur Godelmann-Rot `#E52D12` (`--gdm-chat-accent`). Keine Secrets in Dateien/Commits.
+
+## Tests (PFLICHT vor Chat-/Prompt-/Modell-Aenderungen)
+
+- **Gates dieses Repos:** [`.xoder/TESTING.md`](.xoder/TESTING.md)
+- **Regressionstest der KI-Berater** — prueft BEIDE Chatbots + die Stufen-Gates in EINEM Lauf.
+  Nur auf `platform-test` ausfuehren (auf control meldet er faelschlich „Connection refused"):
+  ```sh
+  scp -i /root/.ssh/platform /projects/spass/scripts/verify-ai-channels.py root@10.0.0.4:/tmp/
+  ssh -i /root/.ssh/platform root@10.0.0.4 'cd /tmp && python3 verify-ai-channels.py'
+  ```
+  Erwartet: **„alle Pflicht-Checks gruen"**.
+- **Gesamtkontext (Org):** `Godelmann/.xoder/TESTING.md` — Pruefebenen, SPA-Falle
+  (HTTP 200 beweist keinen Endpunkt), Fassungsvergleich ueber Commits statt Nummern.
+- **Regelwerk:** `Godelmann/.xoder/docs/WEBCHAT.md`.
