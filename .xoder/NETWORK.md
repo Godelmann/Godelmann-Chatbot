@@ -28,9 +28,10 @@ Zwei Stages, geteilte Godelmann-App-Server (dieselbe Infrastruktur wie GoCreate)
 
 **Deploy-Layout (Widget):** Das gebaute ES-Modul `dist/chatbot-widget.v1.js` wird als statische Datei
 **vom `godelmann-chatbot-server`-Host** ausgeliefert (Origin der Script-URL = API-Origin; ohne `api-base`-Attribut
-spricht das Widget genau diesen Host an). **[PRUEFEN]** exakter Ausspiel-Pfad/Caddy-`root` auf den App-Servern
-(im Repo nicht belegt — Backend/Deploy liegen in `spass` + platform-control). Widget-Build lokal:
-`npm run build` → `dist/chatbot-widget.v1.js`.
+spricht das Widget genau diesen Host an). **Ausspiel-Pfad (verifiziert 01.08.2026):** `/opt/godelmann-chatbot/dist/`
+auf `platform-test` bzw. `godelmann-prod`; dorthin liefert `deploy-godelmann.sh chatbot [--prod]` aus
+(Deploy-Flow: [`DEPLOYMENT.md`](DEPLOYMENT.md)). Widget-Build lokal: `npm run build` → `dist/chatbot-widget.v1.js`
+(+ `dist/version.json`).
 
 ## 2. Netz-Segmente & Trust-Boundaries
 
@@ -122,10 +123,10 @@ Widget-Repo — es ist reines Frontend.
 
 ## 8. Offene Netz-Punkte (explizit offen — nicht erfunden)
 
-- **[PRUEFEN]** Cloudflare-Fronting der `chatbot[-test].godelmann.net`-Domains (Repo belegt nur Caddy-TLS
-  auf dem App-Server; DNS/Proxy-Status nicht erhoben — analog GoCreate offen).
-- **[PRUEFEN]** Exakter statischer Ausspiel-Pfad des `chatbot-widget.v1.js` (Caddy-`root`/Deploy-Skript liegen
-  in `spass` + platform-control, nicht in diesem Repo).
+- **Kein Cloudflare-Fronting** (geprueft 01.08.2026): `chatbot.godelmann.net` loest direkt auf
+  `49.12.77.51` auf, `chatbot-test.godelmann.net` auf `162.55.51.254` — also DNS-only, kein Proxy davor.
+  TLS macht Caddy auf dem App-Server selbst.
+- **Ausspiel-Pfad geklaert** (01.08.2026): `/opt/godelmann-chatbot/dist/`, siehe oben §1.
 - **[PRUEFEN]** conversation_id Cookie vs. localStorage (Doku-Drift ANFORDERUNGEN.md ↔ Ist-Stand, s. §4).
 - **[PRUEFEN]** Prod-Doku-Drift: `docs/EINBINDUNG.md` fuehrt Prod als „nach DNS-Freigabe", BACKLOG/CLAUDE als LIVE.
 

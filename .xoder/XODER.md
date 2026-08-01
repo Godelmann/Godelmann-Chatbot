@@ -110,8 +110,12 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
 - **⚠️ Dependency — echte Vertriebs-Adressliste:** PLZ→Ansprechpartner-Kontaktdaten (Dietmar extrahiert sie
   aus einem Dokument) in die GoCreate-Kontakt-Admin einpflegen; danach Test-Kontakt ersetzen. Ebenso die
   **echten Link-Ziel-URLs** (Heike) in `webchat_links` eintragen.
-- **Prod-Rollout der Weiche/Kontakte:** `CHATBOT_MODEL=gpt-5.6` + `CONTACT_SUPABASE_*`-Env auf prod-Chatbot,
-  Widget-/Server-Deploy prod, prod-caddy-CORS — separat mit Freigabe (Kette laeuft heute nur test).
+- **Prod-Rollout: erledigt** (01.08.2026). Widget und Server laufen auf `godelmann-prod`
+  (`chatbot.godelmann.net`, Fassung 0.0.7), `CONTACT_SUPABASE_URL` ist gesetzt.
+  **Anmerkung zum Modell:** `CHATBOT_MODEL` ist auf prod **nicht** gesetzt — prod laeuft ueber den
+  Code-Standard `DEFAULT_CHAT_MODEL = "gpt-5.6"`, test setzt denselben Wert zusaetzlich ausdruecklich.
+  Heute funktional identisch, aber fragil: wer den Code-Standard aendert, aendert prod still mit.
+  Offen: `CHATBOT_MODEL` auch auf prod explizit setzen (Env-Aenderung braucht Freigabe).
 - E2E-Abnahme laut `docs/ANFORDERUNGEN.md` formal abschliessen (grounded-Antwort mit Quelle ueber den
   vhost, Rate-Limit-Negativtest, CORS-Negativtest, Browser-E2E auf Test-Einbettungsseite).
 - Restliche Ausbaustufen aus dem GoCreate-Websites-Backlog (Sub-App 3: Chat-Reviews/Kuratierung, Cost-Tracking).
