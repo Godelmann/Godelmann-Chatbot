@@ -1,10 +1,24 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-01 (Paket-Version **0.0.6**)
+> Stand: 2026-08-01 (Paket-Version **0.0.7**, PROD ausgerollt)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.7 (2026-08-01, LIVE test+PROD)** — 17 Befunde aus einem adversarialen Review
+  behoben, davon zwei KRITISCHE, die das Sitzungs-Gedaechtnis ins Gegenteil verkehrt
+  haetten: (1) fertige Bot-Antworten wurden nie gesichert — beim Seitenwechsel blieb die
+  Frage OHNE Antwort stehen; (2) der rohe Modell-Text samt `<think>` wurde gespeichert und
+  beim Wiederherstellen ungefiltert gerendert — der serverseitig abgestellte Reasoning-Leak
+  waere im Kundenfenster zurueckgewesen. Ausserdem: Ansprechpartner-Ergebnis wurde nicht
+  gesichert; „Neue Unterhaltung" liess den Entwurf stehen; ein abgebrochener Lauf schrieb
+  seine Fehlermeldung in die FRISCHE Unterhaltung; `connectedCallback` war nicht idempotent;
+  `aria-modal` wurde ohne Fokus behauptet (Screenreader sahen die Seite ausgeblendet); jede
+  Folgeseite loeste ungefragt Rechenarbeit aus; Fehlermeldungen verloren ihren
+  Wiederholen-Knopf. **Damit ist prod erstmals seit 0.0.1 (12.07.) wieder aktuell** —
+  inklusive Reasoning-Strip, Zielgruppen-Weiche, PLZ-Ansprechpartner und Vorschau-Kette.
+  ⚠ Der PLZ-Ansprechpartner antwortet auf prod noch „kein Ansprechpartner hinterlegt",
+  solange `/api/contact` dort keine Datenquelle hat (Vertriebsliste steht aus).
 - **0.0.6 (2026-08-01)** — **Chat ueberlebt Seitenwechsel und Neuladen.** godelmann.de
   laedt bei jedem Seitenwechsel komplett neu; ein Beratungsgespraech fing dadurch auf
   jeder Unterseite wieder bei der Begruessung an. Panel-Zustand, Verlauf, Stand der
