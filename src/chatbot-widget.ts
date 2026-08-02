@@ -408,10 +408,8 @@ class ChatError extends Error {
 const STYLE = /* css */ `
   :host {
     /* Dokumentierte Theming-Hooks */
-    /* Godelmann-CI (Farbpalette in Godelmann/CLAUDE.md): Red 100 #E54F35,
-       Red 90 #B33E29 (Hover), Anthracite 100/80/30/15/10.
-       Vorher standen hier freie Naeherungen (#E52D12, #1c1c1c, #f7f7f7 ...),
-       die neben der echten Website sichtbar danebenlagen. */
+    /* Godelmann-CI: Red 100 #E54F35, Red 90 (Hover) #B33E29,
+       Anthracite 100/80/30/15/10. Palette: Godelmann/CLAUDE.md */
     --_accent: var(--gdm-chat-accent, #E54F35);
     --_z: var(--gdm-chat-z-index, 2147483000);
     --_font: var(--gdm-chat-font, inherit);
