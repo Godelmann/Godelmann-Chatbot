@@ -1,15 +1,27 @@
 # Einbindung — GODELMANN Chatbot-Widget (`<godelmann-chatbot>`)
 
-> Stand 2026-07-12 · Widget-Version v1 (`chatbot-widget.v1.js`) · fuer die godelmann.de-Agentur
+> Stand 2026-08-02 · Widget-Version v1 (`chatbot-widget.v1.js`, Fassung 0.0.8) · fuer die godelmann.de-Agentur
 > Ansprechpartner: **Dietmar Scharf** (BLUE ITS / Ramteid GmbH), blueits@ramteid.gmbh
 
 Das Widget ist eine **Web Component nach WHATWG-Standard** (Custom Element +
-Shadow DOM) ohne Framework-Abhaengigkeit. Es rendert eine Floating-Bubble
-unten rechts (kein iFrame) und oeffnet ein Chat-Panel, das mit dem
-Godelmann-Chatbot-Backend spricht (SSE-Streaming, self-hosted
-ALTCHA-Spam-Schutz, IP-Rate-Limit).
+Shadow DOM) ohne Framework-Abhaengigkeit. Es spricht mit dem
+Godelmann-Chatbot-Backend (SSE-Streaming, self-hosted ALTCHA-Spam-Schutz,
+IP-Rate-Limit) und laedt sonst **keine** externen Ressourcen.
 
-## Snippet
+Es kennt seit 0.0.8 **drei Darstellungsformen** (Attribut `mode`), alle mit
+demselben Snippet und derselben Unterhaltung:
+
+- **`floating`** (Default) — schwebende Bubble unten rechts (bisheriges Verhalten, unveraendert).
+- **`drawer`** — rechter Seiten-Drawer, der die Seite sanft schmaler schiebt (kein
+  Abdunkeln, Seite bleibt bedienbar); Ausloeser ist ein eigenes Element in der Seite
+  (z. B. das Utility-Rail-Item), Vollbild-Wechsel auf eine eigene Seite.
+- **`page`** — der Chat fuellt einen Container als eigene (Unter-)Seite.
+
+**Alles bleibt v1** (additiv): Wer nur das bisherige Snippet nutzt, bekommt
+unveraendert die Floating-Bubble. Das **Lieferpaket fuer godelmann.de** (Rail +
+Drawer + Seite) steht unten in Abschnitt „Einbindung als Seiten-Drawer".
+
+## Snippet (Floating, unveraendert)
 
 ```html
 <script type="module" src="https://chatbot-test.godelmann.net/chatbot-widget.v1.js"></script>
@@ -28,9 +40,12 @@ Alle Attribute sind optional und **reaktiv** (Aenderung zur Laufzeit wirkt sofor
 | Attribut | Werte | Default | Beschreibung |
 |---|---|---|---|
 | `lang` | `de`, `en` | `de` | Sprache der UI-Texte (Titel, Buttons, Fehlermeldungen, Begruessung). Unbekannte Werte fallen auf `de` zurueck. |
-| `position` | `bottom-right`, `bottom-left` | `bottom-right` | Ecke, in der Bubble und Panel verankert sind. |
+| `position` | `bottom-right`, `bottom-left` | `bottom-right` | Ecke, in der Bubble und Panel verankert sind (nur `mode="floating"`). |
 | `api-base` | URL-Origin | Origin der Script-URL | Basis-URL des Chatbot-Backends (`{api-base}/api/chat`, `{api-base}/altcha/challenge`). Nur setzen, wenn Widget-Script und API auf verschiedenen Hosts liegen. |
 | `greeting` | Freitext | Deutsche Standard-Begruessung | Eigene erste Assistenten-Nachricht beim Oeffnen des Panels. |
+| `mode` | `floating`, `drawer`, `page` | `floating` | Darstellungsform (s. o.). Unbekannte Werte fallen auf `floating` zurueck. |
+| `launcher` | `bubble`, `none` | `bubble` | `none` blendet die eigene Bubble aus; der Ausloeser ist dann Host-Markup mit `data-gdm-chat-launcher` (das Widget verdrahtet es automatisch, s. u.). |
+| `page-url` | Pfad/URL | `/chat` | Ziel des Vollbild-Wechsels aus dem Drawer (Punchout). |
 
 ## CSS-Custom-Properties (Theming)
 
@@ -39,17 +54,94 @@ ueber diese dokumentierten Custom Properties (z. B. am Element oder auf `:root`)
 
 | Property | Default | Beschreibung |
 |---|---|---|
-| `--gdm-chat-accent` | `#E52D12` (Godelmann-Rot) | Akzentfarbe: Bubble, Header, Nutzer-Nachrichten, Senden-Button, Links. |
+| `--gdm-chat-accent` | `#E54F35` (Godelmann Red 100) | Akzentfarbe: Bubble, Header, Nutzer-Nachrichten, Senden-Button, Links. |
 | `--gdm-chat-z-index` | `2147483000` | Stapelreihenfolge von Bubble und Panel. |
 | `--gdm-chat-font` | `inherit` (Seiten-Font) | Schriftfamilie des Widgets. |
+| `--gdm-chat-drawer-width` | `480px` | Breite des Seiten-Drawers (`mode="drawer"`). Muss mit der Breite in der Drawer-Support-CSS-Regel uebereinstimmen (s. u.). |
 
 ```css
 godelmann-chatbot {
-  --gdm-chat-accent: #E52D12;
+  --gdm-chat-accent: #E54F35;
   --gdm-chat-z-index: 99999;
   --gdm-chat-font: "FF Meta Pro", sans-serif;
+  --gdm-chat-drawer-width: 480px;
 }
 ```
+
+## Einbindung als Seiten-Drawer (Lieferpaket godelmann.de)
+
+Fuer godelmann.de wird das Widget als **rechter Seiten-Drawer** eingebunden, mit
+einem eigenen Ausloeser in der bestehenden Utility-Rail und einer Vollbild-Seite
+`/chat`. Die Einbindung ist **minimalinvasiv** — im Kern drei kleine Bausteine
+(Rail-Item, Widget-Tag, eine CSS-Regel) plus optional die CMS-Seite.
+
+### 1. Ausloeser in der Rail (statt eigener Bubble)
+
+Ein zusaetzliches Rail-Item mit dem Attribut `data-gdm-chat-launcher`. Das Widget
+verdrahtet es automatisch (Klick oeffnet/schliesst den Drawer, `aria-expanded`
+wird gespiegelt) — **kein Inline-JavaScript noetig** (CSP-freundlich).
+`href="/chat"` ist der Fallback ohne JavaScript. Icon frei waehlbar (hier
+vorlaeufig eine Sprechblase; Godelmanns eigenes Chat-Icon kann es ersetzen):
+
+```html
+<a data-gdm-chat-launcher href="/chat" aria-label="Chat-Berater oeffnen"
+   class="<gleiche Klassen wie die uebrigen Rail-Items>">
+  <!-- Icon (SVG oder Icon-Font wie die anderen Rail-Items) -->
+  <span class="hidden md:inline">Chat-Berater</span>
+</a>
+```
+
+### 2. Das Widget selbst (Drawer-Modus)
+
+```html
+<script type="module" src="https://chatbot-test.godelmann.net/chatbot-widget.v1.js"></script>
+<godelmann-chatbot mode="drawer" launcher="none" page-url="/chat"></godelmann-chatbot>
+```
+
+### 3. GENAU EINE CSS-Regel
+
+Der Drawer schiebt den Seiteninhalt ueber einen `margin-right` am `<html>` (setzt
+das Widget selbst, inkl. Marker-Klasse `gdm-chat-drawer-open`). **Fest
+positionierte** Elemente (Header und Rail) folgen einem html-`margin` nicht —
+diese eine Regel zieht sie mit (mit `right`, **nicht** `transform`, sonst bricht
+die Rail-Mechanik):
+
+```css
+html.gdm-chat-drawer-open [data-header] header,
+html.gdm-chat-drawer-open div[data-inject="frm-utility-nav"] {
+  right: var(--gdm-chat-drawer-width, 480px);
+  transition: right .8s ease;
+}
+```
+
+Die Selektoren gelten fuer die heutige godelmann.de-Struktur (`[data-header] header`
+= Kopf, `div[data-inject="frm-utility-nav"]` = Rail). Aendert sich das Markup, nur
+diese eine Regel anpassen.
+
+### 4. Vollbild-Seite `/chat` (CMS, optional aber empfohlen)
+
+Eine eigene Seite (Route `/chat`, im normalen Header/Footer-Stil), die den Berater
+in einen **hoehen-gebenden Container** setzt:
+
+```html
+<div style="height:min(78vh,780px); min-height:480px;">
+  <godelmann-chatbot mode="page" page-url="/chat"
+    style="display:block; width:100%; height:100%;"></godelmann-chatbot>
+</div>
+<script type="module" src="https://chatbot-test.godelmann.net/chatbot-widget.v1.js"></script>
+```
+
+Drawer und Seite teilen dieselbe Unterhaltung (gleiche Origin, gleicher
+`sessionStorage`): Punchout aus dem Drawer oeffnet `/chat`, „Verkleinern" fuehrt
+zurueck.
+
+> **Mobil:** Auf kleinen Displays wird der Drawer automatisch zum
+> Vollflaechen-Panel (kein Schieben) — nichts weiter zu tun.
+>
+> **Demo ohne Agentur:** Der Godelmann-Proxy (`test.godelmann.net`) injiziert die
+> Bausteine 1+3 bereits selbst und setzt das Widget in den Drawer-Modus — dort ist
+> die komplette Einbindung ohne CMS-Aenderung sichtbar (Punchout auf
+> `test.godelmann.net/chat`).
 
 ## Events
 
@@ -58,8 +150,8 @@ sie lassen sich am Element oder auf `document` abonnieren.
 
 | Event | `detail` | Wann |
 |---|---|---|
-| `gdm-chat:opened` | — | Chat-Panel wurde geoeffnet. |
-| `gdm-chat:closed` | — | Chat-Panel wurde geschlossen (X, ESC oder Bubble). |
+| `gdm-chat:opened` | — | Chat wurde geoeffnet. |
+| `gdm-chat:closed` | — | Chat wurde geschlossen (X, ESC oder Ausloeser). |
 | `gdm-chat:message-sent` | `{ message }` | Nutzer-Nachricht wurde abgeschickt. |
 | `gdm-chat:response-received` | `{ message }` | Assistenten-Antwort vollstaendig empfangen. |
 | `gdm-chat:error` | `{ message }` | Fehler (Rate-Limit, Netz, Timeout, Captcha) — `message` ist der angezeigte Text. |
@@ -68,6 +160,22 @@ sie lassen sich am Element oder auf `document` abonnieren.
 document.addEventListener('gdm-chat:message-sent', (e) => {
   console.log('Chat-Frage:', e.detail.message);
 });
+```
+
+### Steuern von aussen (optional)
+
+Das Widget laesst sich programmatisch oeffnen/schliessen — entweder ueber die
+Element-Referenz oder ueber Ereignisse am `document` (praktisch, wenn man das
+Element nicht direkt greifen kann):
+
+| Methode | Ereignis am `document` | Wirkung |
+|---|---|---|
+| `el.open()` | `gdm-chat:open` | Chat oeffnen. |
+| `el.close()` | `gdm-chat:close` | Chat schliessen. |
+| `el.toggle()` | `gdm-chat:toggle` | Umschalten. |
+
+```js
+document.dispatchEvent(new CustomEvent('gdm-chat:toggle'));
 ```
 
 ## Content-Security-Policy (CSP)

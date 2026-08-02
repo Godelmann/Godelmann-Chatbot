@@ -1,10 +1,28 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-01 (Paket-Version **0.0.7**, PROD ausgerollt)
+> Stand: 2026-08-02 (Paket-Version **0.0.8**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.8 (2026-08-02, test)** — **Drawer- und Seiten-Modus (Einbindung als Teil der
+  Seite).** Bisher nur schwebende Bubble; jetzt drei Darstellungsformen ueber das neue
+  Attribut `mode`: `floating` (unveraendert), **`drawer`** (rechter Seiten-Drawer, der die
+  Seite via `margin-right` am `<html>` sanft schmaler schiebt — kein Abdunkeln, Seite
+  bleibt bedienbar; Slide-in ~0,8 s; auf kleinen Displays automatisch Vollflaechen-Panel)
+  und **`page`** (in-flow, fuellt einen Container als eigene Seite). Neu ausserdem:
+  `launcher="none"` blendet die eigene Bubble aus und verdrahtet Host-Elemente mit
+  `data-gdm-chat-launcher` automatisch (Klick -> Toggle, `aria-expanded` gespiegelt, kein
+  Inline-JS -> CSP-freundlich); `page-url` (Default `/chat`) + Punchout aus dem Drawer;
+  „Verkleinern" von der Seite zurueck in den Drawer (dieselbe Unterhaltung ueber gemeinsamen
+  `sessionStorage`); oeffentliche API `open()/close()/toggle()` + Dokument-Ereignisse
+  `gdm-chat:open|close|toggle`; `disconnectedCallback` nimmt alle Wirt-Mutationen sauber
+  zurueck (html-Klasse/margin/overflow, Listener, Rail-Verdrahtung). CSS-Property
+  `--gdm-chat-drawer-width` (Default 480px). aria-modal/Fokus-Trap bleiben auf `floating`
+  beschraenkt (Drawer/Seite lassen den Wirt bedienbar). Alles **additiv unter v1**. Fuer
+  godelmann.de bereitet der Godelmann-Proxy die volle Einbindung vor (Rail-Item + die eine
+  CSS-Regel injiziert, Widget im Drawer-Modus, `/chat`-Vollseite). Agentur-Vertrag:
+  `docs/EINBINDUNG.md` v1.1. Bundle 13,9 kB gzip (Gate < 80 kB).
 - **0.0.7 (2026-08-01, LIVE test+PROD)** — 17 Befunde aus einem adversarialen Review
   behoben, davon zwei KRITISCHE, die das Sitzungs-Gedaechtnis ins Gegenteil verkehrt
   haetten: (1) fertige Bot-Antworten wurden nie gesichert — beim Seitenwechsel blieb die

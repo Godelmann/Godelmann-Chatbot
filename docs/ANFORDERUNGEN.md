@@ -61,9 +61,12 @@ damit die godelmann.de-Agentur es framework-agnostisch einbinden kann:
    CSS-Custom-Properties (`--gdm-chat-accent`, `--gdm-chat-z-index`, …).
 3. **Events** als `CustomEvent` (`gdm-chat:opened`, `gdm-chat:message-sent`)
    — keine globalen Callbacks; Verlaufs-Id in `localStorage` des Host-Origins.
-4. Floating-Bubble (BACKLOG-Vorgabe, kein iFrame), öffnet Chat-Panel;
-   Bundle < 80 kB gzip, self-contained; ES-Module + versionierte URL
-   (`chatbot-widget.v1.js`) — Breaking Changes ⇒ `v2`.
+4. Darstellungsformen (Attribut `mode`, kein iFrame): **`floating`** (Bubble,
+   BACKLOG-Vorgabe, Default), **`drawer`** (rechter Seiten-Drawer, schiebt die
+   Seite; Ausloeser via `launcher="none"` + `data-gdm-chat-launcher`-Host-Markup),
+   **`page`** (fuellt einen Container). Bundle < 80 kB gzip, self-contained;
+   ES-Module + versionierte URL (`chatbot-widget.v1.js`), alle Modi additiv unter
+   v1 — Breaking Changes ⇒ `v2`.
 5. SSE-Streaming-Rendering (Muster: GoCreate `src/lib/dgx.ts`-Parser,
    abgespeckt); Quell-Links aus knowledge_search anklickbar; Markdown sanitized.
 6. DE-Texte, Datenschutz-Hinweis + Link, „Neue Unterhaltung"-Button

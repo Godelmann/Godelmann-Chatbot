@@ -41,8 +41,7 @@
       <h1>GODELMANN Chatbot — Standalone-Preview</h1>
       <p>
         Referenz-Einbindung des <code>&lt;godelmann-chatbot&gt;</code>-Widgets
-        (Web Component, Floating-Bubble unten rechts). Integrations-Doku:
-        <code>docs/EINBINDUNG.md</code>.
+        (Web Component). Integrations-Doku: <code>docs/EINBINDUNG.md</code>.
       </p>
       <p>
         Ohne <code>api-base</code>-Attribut zeigt das Widget auf den Origin der
@@ -51,9 +50,51 @@
         Chatbot-Host setzen, z.&nbsp;B.
         <code>https://chatbot-test.godelmann.net</code>).
       </p>
+      <p>
+        <strong>Modi zum Ausprobieren</strong> (Layout/Verhalten, ohne Backend):
+      </p>
+      <ul>
+        <li><a href="?">Floating</a> — schwebende Bubble unten rechts (Default).</li>
+        <li><a href="?mode=drawer">Drawer</a> — rechter Seiten-Drawer, schiebt diese Seite schmaler.</li>
+        <li><a href="?mode=drawer&amp;launcher=none">Drawer + Rail</a> — ohne Bubble; der Ausloeser unten rechts ist Host-Markup (<code>[data-gdm-chat-launcher]</code>).</li>
+        <li><a href="?mode=page">Page</a> — Vollseiten-Modus (fuellt den Container unten).</li>
+      </ul>
+
+      <!-- Demo eines Rail-Ausloesers (Host-Markup) fuer launcher="none". -->
+      <div id="demo-rail" hidden style="position:fixed; right:0; top:40%; z-index:5;">
+        <a data-gdm-chat-launcher href="/chat" role="button"
+           aria-label="Chat-Berater oeffnen"
+           style="display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; background:#3F4549; color:#fff; cursor:pointer; text-decoration:none;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+        </a>
+      </div>
+
+      <!-- Container fuer den Seiten-Modus (braucht eine Hoehe). -->
+      <div id="page-host" hidden style="height:70vh; min-height:420px; border:1px solid #ccc; margin-top:24px;"></div>
     </main>
 
     <script type="module" src="/src/chatbot-widget.ts"></script>
-    <godelmann-chatbot lang="de" position="bottom-right"></godelmann-chatbot>
+    <script>
+      // Preview-Parameter: ?mode=drawer|page & ?launcher=none — nur zum Ausprobieren.
+      const p = new URLSearchParams(location.search);
+      const mode = p.get('mode') || 'floating';
+      const launcher = p.get('launcher') || 'bubble';
+      const el = document.createElement('godelmann-chatbot');
+      el.setAttribute('lang', 'de');
+      el.setAttribute('position', 'bottom-right');
+      if (mode !== 'floating') el.setAttribute('mode', mode);
+      if (launcher === 'none') {
+        el.setAttribute('launcher', 'none');
+        document.getElementById('demo-rail').hidden = false;
+      }
+      el.setAttribute('page-url', '?mode=page');
+      if (mode === 'page') {
+        const host = document.getElementById('page-host');
+        host.hidden = false;
+        host.appendChild(el);
+      } else {
+        document.body.appendChild(el);
+      }
+    </script>
   </body>
 </html>

@@ -69,6 +69,8 @@ interface Texts {
   privacy: string;
   privacyLink: string;
   close: string;
+  expand: string;
+  collapse: string;
   errRateLimit: string;
   errCaptcha: string;
   errNetwork: string;
@@ -92,6 +94,8 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     privacy: 'Anonymer Chat — bitte keine personenbezogenen Daten eingeben.',
     privacyLink: 'Datenschutz',
     close: 'Chat schliessen',
+    expand: 'Als eigene Seite oeffnen',
+    collapse: 'Verkleinern',
     errRateLimit:
       'Gerade sind zu viele Anfragen eingegangen. Bitte versuchen Sie es in ' +
       'ein paar Minuten erneut (maximal 10 Nachrichten in 10 Minuten).',
@@ -117,6 +121,8 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     privacy: 'Anonymous chat — please do not enter personal data.',
     privacyLink: 'Privacy policy',
     close: 'Close chat',
+    expand: 'Open as full page',
+    collapse: 'Collapse',
     errRateLimit:
       'Too many requests right now. Please try again in a few minutes ' +
       '(at most 10 messages per 10 minutes).',
@@ -413,7 +419,11 @@ const STYLE = /* css */ `
     --_accent: var(--gdm-chat-accent, #E54F35);
     --_z: var(--gdm-chat-z-index, 2147483000);
     --_font: var(--gdm-chat-font, inherit);
+    /* Breite des Seiten-Drawers (mode="drawer"). Ueberschreibbar; Default 480px. */
+    --_drawer-w: var(--gdm-chat-drawer-width, 480px);
   }
+  /* Seiten-Modus: das Element fuellt seinen (hoehen-gebenden) Container. */
+  :host([mode="page"]) { display: block; width: 100%; height: 100%; }
   *, *::before, *::after { box-sizing: border-box; }
 
   .root { font-family: var(--_font); font-size: 15px; line-height: 1.45; color: #3F4549; }
@@ -428,6 +438,9 @@ const STYLE = /* css */ `
     display: flex; align-items: center; justify-content: center;
     transition: transform 0.15s ease;
   }
+  /* Die Autor-Regel .bubble{display:flex} schlaegt das UA-[hidden] (gleiche
+     Spezifitaet, Autor gewinnt) — deshalb [hidden] hier explizit durchsetzen. */
+  .bubble[hidden] { display: none; }
   .bubble:hover { transform: scale(1.06); }
   .bubble:focus-visible { outline: 3px solid #3F4549; outline-offset: 2px; }
   .bubble svg { width: 28px; height: 28px; }
@@ -461,6 +474,8 @@ const STYLE = /* css */ `
   .header button:hover { background: rgba(255, 255, 255, 0.28); }
   .header button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
   .header .close { font-size: 16px; line-height: 1; padding: 5px 10px; }
+  .header .punchout, .header .minimize { font-size: 15px; line-height: 1; padding: 5px 9px; }
+  .header button[hidden] { display: none; }
 
   .messages {
     flex: 1 1 auto; overflow-y: auto; padding: 14px;
@@ -536,6 +551,40 @@ const STYLE = /* css */ `
     }
     .root.pos-right .panel, .root.pos-left .panel { right: 0; left: 0; }
   }
+
+  /* --- Launcher aus (Rail-Einbindung stellt einen eigenen Ausloeser) --- */
+  .root.launcher-none .bubble { display: none; }
+
+  /* --- Drawer-Modus: rechte Vollhoehen-Spalte ("Skyscraper") --- */
+  /* Ab Desktop schiebt der Wirt (html) seinen Inhalt schmaler (JS setzt die
+     Klasse gdm-chat-drawer-open + margin-right). Das Panel selbst sitzt fest
+     rechts und schiebt sanft herein. Auf kleinen Displays greift die
+     Vollflaechen-Media-Query oben (kein Schieben). */
+  .root.mode-drawer .panel {
+    position: fixed; top: 0; right: 0; bottom: 0; left: auto;
+    width: var(--_drawer-w); max-width: 100vw;
+    height: 100vh; max-height: none;
+    border-radius: 0;
+    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.18);
+  }
+  .root.mode-drawer .panel:not([hidden]) {
+    animation: gdm-drawer-in 0.8s ease both;
+  }
+  @keyframes gdm-drawer-in {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .root.mode-drawer .panel:not([hidden]) { animation: none; }
+  }
+
+  /* --- Seiten-Modus: Panel liegt in-flow und fuellt den Container --- */
+  .root.mode-page { height: 100%; }
+  .root.mode-page .panel {
+    position: static; inset: auto; transform: none;
+    width: 100%; max-width: none; height: 100%; max-height: none;
+    border-radius: 0; box-shadow: none; animation: none;
+  }
 `;
 
 const BUBBLE_ICON = `
@@ -559,9 +608,12 @@ interface MessageEntry {
   retryText?: string;
 }
 
+/** Klick-Handler je verdrahtetem Rail-Ausloeser (fuer sauberes Abmelden). */
+const railHandlers = new WeakMap<HTMLElement, (e: Event) => void>();
+
 export class GodelmannChatbot extends HTMLElement {
   static get observedAttributes(): string[] {
-    return ['lang', 'position', 'api-base', 'greeting'];
+    return ['lang', 'position', 'api-base', 'greeting', 'mode', 'launcher', 'page-url'];
   }
 
   private readonly root: ShadowRoot;
@@ -570,6 +622,8 @@ export class GodelmannChatbot extends HTMLElement {
   private panel!: HTMLDivElement;
   private titleEl!: HTMLSpanElement;
   private newBtn!: HTMLButtonElement;
+  private punchoutBtn!: HTMLButtonElement;
+  private minimizeBtn!: HTMLButtonElement;
   private closeBtn!: HTMLButtonElement;
   private messagesEl!: HTMLDivElement;
   private form!: HTMLFormElement;
@@ -606,6 +660,16 @@ export class GodelmannChatbot extends HTMLElement {
    *  `ShadowRoot.activeElement` noch auf das Feld, der Zustand waere dann
    *  faelschlich "fokussiert" (live beobachtet 01.08.). */
   private inputFocused = false;
+  /** Host-Elemente mit `data-gdm-chat-launcher` (Rail-Einbindung), die das
+   *  Widget auf Klick verdrahtet — kein Inline-JS im Agentur-Snippet noetig. */
+  private railLaunchers: HTMLElement[] = [];
+  /** Verdrahtete Dokument-Ereignisse (gdm-chat:open|close|toggle) — imperative
+   *  Steuerung von aussen. Referenzen zum sauberen Abmelden. */
+  private docHandlers: { open: () => void; close: () => void; toggle: () => void } | null = null;
+  /** Ist der Wirt gerade geschoben (Drawer offen, Desktop)? Fuer Zuruecknahme. */
+  private hostPushed = false;
+  /** Vorheriger inline `overflow-x` von <html> — beim Schliessen wiederhergestellt. */
+  private prevHtmlOverflowX: string | null = null;
 
   constructor() {
     super();
@@ -633,6 +697,29 @@ export class GodelmannChatbot extends HTMLElement {
     return attr && attr.trim() !== '' ? attr.trim() : this.texts.greeting;
   }
 
+  /** Darstellungsmodus: schwebende Blase (Default), Seiten-Drawer, Vollseite. */
+  private get mode(): 'floating' | 'drawer' | 'page' {
+    const m = (this.getAttribute('mode') ?? 'floating').toLowerCase();
+    return m === 'drawer' || m === 'page' ? m : 'floating';
+  }
+
+  /** Eigener Ausloeser (`bubble`, Default) oder keiner (`none`, Rail-Einbindung). */
+  private get launcherKind(): 'bubble' | 'none' {
+    return (this.getAttribute('launcher') ?? 'bubble').toLowerCase() === 'none' ? 'none' : 'bubble';
+  }
+
+  /** Ziel des Vollbild-Wechsels (Drawer -> Seite). Default `/chat`. */
+  private get pageUrl(): string {
+    const attr = this.getAttribute('page-url');
+    return attr && attr.trim() !== '' ? attr.trim() : '/chat';
+  }
+
+  /** Kleines Display (gleiche Grenze wie die Vollflaechen-Media-Query): dort
+   *  wird der Drawer zum Vollbild-Panel und schiebt den Wirt NICHT. */
+  private get isCompact(): boolean {
+    return window.matchMedia('(max-width: 520px), (max-height: 560px)').matches;
+  }
+
   connectedCallback(): void {
     // Ausgelieferte Fassung von aussen ablesbar machen (Abgleich test/prod).
     this.setAttribute('data-version', __WIDGET_VERSION__)
@@ -643,6 +730,28 @@ export class GodelmannChatbot extends HTMLElement {
       this.sessionRestored = true;
       this.restoreSession();
     }
+    // Modus (floating|drawer|page) + Launcher-Verdrahtung NACH dem Restore:
+    // im Seiten-Modus erzwingt applyMode "offen", unabhaengig vom Speicher.
+    this.applyMode();
+    this.wireRailLaunchers();
+    this.bindDocumentEvents();
+  }
+
+  /** Wird beim Entfernen aus dem DOM aufgerufen (godelmann.de laedt bei jeder
+   *  Navigation neu). Nimmt ALLE Mutationen am Wirt zurueck: laufende Antwort,
+   *  Seiten-Schub (html-Klasse + margin + overflow), Dokument-Ereignisse und
+   *  die Rail-Verdrahtung. Ohne diese Reinigung bliebe z. B. der margin-right
+   *  am <html> haengen, wenn das Element zur Laufzeit ersetzt wird. */
+  disconnectedCallback(): void {
+    this.abortCtrl?.abort();
+    this.applyHostPush(false);
+    if (this.docHandlers) {
+      document.removeEventListener('gdm-chat:open', this.docHandlers.open);
+      document.removeEventListener('gdm-chat:close', this.docHandlers.close);
+      document.removeEventListener('gdm-chat:toggle', this.docHandlers.toggle);
+      this.docHandlers = null;
+    }
+    this.unwireRailLaunchers();
   }
 
   // --- Sitzungs-Gedaechtnis (Seitenwechsel + Neuladen) ---------------------
@@ -749,6 +858,16 @@ export class GodelmannChatbot extends HTMLElement {
         this.altchaPending = null;
         this.captchaDisabled = false;
         break;
+      case 'mode':
+        this.applyMode();
+        break;
+      case 'launcher':
+        // Wechsel bubble<->none: Bubble ein-/ausblenden und Rail neu verdrahten.
+        this.applyMode();
+        if (this.launcherKind === 'none') this.wireRailLaunchers();
+        else this.unwireRailLaunchers();
+        break;
+      // 'page-url' wird bei Bedarf gelesen (kein Zustand).
     }
   }
 
@@ -792,12 +911,26 @@ export class GodelmannChatbot extends HTMLElement {
     this.newBtn.type = 'button';
     this.newBtn.className = 'new';
     this.newBtn.addEventListener('click', () => this.resetConversation());
+    // Punchout (nur Drawer): auf die Vollseite wechseln.
+    this.punchoutBtn = document.createElement('button');
+    this.punchoutBtn.type = 'button';
+    this.punchoutBtn.className = 'punchout';
+    this.punchoutBtn.textContent = '↗'; // ↗
+    this.punchoutBtn.hidden = true;
+    this.punchoutBtn.addEventListener('click', () => this.punchout());
+    // Verkleinern (nur Seite): zurueck in den Drawer der vorigen Seite.
+    this.minimizeBtn = document.createElement('button');
+    this.minimizeBtn.type = 'button';
+    this.minimizeBtn.className = 'minimize';
+    this.minimizeBtn.textContent = '↙'; // ↙
+    this.minimizeBtn.hidden = true;
+    this.minimizeBtn.addEventListener('click', () => this.minimizeToDrawer());
     this.closeBtn = document.createElement('button');
     this.closeBtn.type = 'button';
     this.closeBtn.className = 'close';
     this.closeBtn.textContent = '×';
     this.closeBtn.addEventListener('click', () => this.close());
-    header.append(this.titleEl, this.newBtn, this.closeBtn);
+    header.append(this.titleEl, this.newBtn, this.punchoutBtn, this.minimizeBtn, this.closeBtn);
 
     this.messagesEl = document.createElement('div');
     this.messagesEl.className = 'messages';
@@ -822,8 +955,9 @@ export class GodelmannChatbot extends HTMLElement {
     }
     this.input.addEventListener('focus', () => {
       this.inputFocused = true;
-      // Sobald der Schreibfokus drin ist, gilt das Panel als modal.
-      this.panel.setAttribute('aria-modal', 'true');
+      // Nur die schwebende Bubble ist ein modaler Dialog. Im Drawer/auf der
+      // Seite bleibt der Wirt bedienbar -> aria-modal false lassen.
+      if (this.mode === 'floating') this.panel.setAttribute('aria-modal', 'true');
       this.saveSession();
     });
     this.input.addEventListener('blur', () => { this.inputFocused = false; this.saveSession(); });
@@ -855,6 +989,10 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-label', this.isOpen ? t.bubbleClose : t.bubbleOpen);
     this.titleEl.textContent = t.headerTitle;
     this.newBtn.textContent = t.newConversation;
+    this.punchoutBtn.setAttribute('aria-label', t.expand);
+    this.punchoutBtn.setAttribute('title', t.expand);
+    this.minimizeBtn.setAttribute('aria-label', t.collapse);
+    this.minimizeBtn.setAttribute('title', t.collapse);
     this.closeBtn.setAttribute('aria-label', t.close);
     this.input.placeholder = t.inputPlaceholder;
     this.input.setAttribute('aria-label', t.inputPlaceholder);
@@ -873,7 +1011,9 @@ export class GodelmannChatbot extends HTMLElement {
 
   // --- Oeffnen / Schliessen ------------------------------------------------
 
-  private toggle(): void {
+  /** Oeffentliche API (dokumentiert in docs/EINBINDUNG.md): von aussen per
+   *  Element-Referenz (`el.toggle()`) oder Dokument-Ereignis (`gdm-chat:toggle`). */
+  toggle(): void {
     if (this.isOpen) this.close();
     else this.open();
   }
@@ -881,12 +1021,13 @@ export class GodelmannChatbot extends HTMLElement {
   /** `fokussieren=false` beim Wiederherstellen: dort entscheidet der
    *  gespeicherte Zustand, ob der Schreibfokus zurueck ins Feld darf. Sonst
    *  wuerde ein Seitenwechsel den Fokus IMMER an den Chat reissen. */
-  private open(fokussieren = true, alsBenutzeraktion = true): void {
+  open(fokussieren = true, alsBenutzeraktion = true): void {
     if (this.isOpen) return;
     this.isOpen = true;
     this.panel.hidden = false;
     this.bubbleBtn.setAttribute('aria-expanded', 'true');
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleClose);
+    this.syncLauncherState();
     if (this.messages.length === 0) {
       this.appendMessage({ role: 'assistant', text: this.greetingText, isGreeting: true });
       this.showZielgruppenWeiche();
@@ -896,8 +1037,12 @@ export class GodelmannChatbot extends HTMLElement {
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
     // Nur bei echter Benutzeraktion: sonst rechnet jede Folgeseite ungefragt.
     if (alsBenutzeraktion) this.ensureAltcha();
-    if (fokussieren) {
-      this.panel.setAttribute('aria-modal', 'true');
+    // Drawer schiebt den Wirt schmaler (nur Desktop); Seite/floating nicht.
+    if (this.mode === 'drawer' && !this.isCompact) this.applyHostPush(true);
+    // Fokus: floating ist ein modaler Dialog; der Drawer fokussiert das Feld
+    // OHNE Modal/Trap (Seite bleibt bedienbar); die Vollseite laesst den Fokus.
+    if (fokussieren && this.mode !== 'page') {
+      if (this.mode === 'floating') this.panel.setAttribute('aria-modal', 'true');
       this.input.focus();
     }
     this.saveSession();
@@ -906,15 +1051,135 @@ export class GodelmannChatbot extends HTMLElement {
     if (alsBenutzeraktion) this.emit('gdm-chat:opened');
   }
 
-  private close(): void {
+  close(): void {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.panel.hidden = true;
     this.bubbleBtn.setAttribute('aria-expanded', 'false');
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleOpen);
-    this.bubbleBtn.focus();
+    this.syncLauncherState();
+    this.applyHostPush(false);
+    // Fokus nur auf einen sichtbaren eigenen Ausloeser zuruecklegen (floating);
+    // bei Rail-Einbindung (Launcher im Wirt) gibt es hier nichts zu fokussieren.
+    if (this.launcherKind === 'bubble' && !this.bubbleBtn.hidden) this.bubbleBtn.focus();
     this.saveSession();
     this.emit('gdm-chat:closed');
+  }
+
+  // --- Modus / Wirt-Schub / Rail-Launcher / Dokument-Ereignisse ------------
+
+  /** Modus-Klassen setzen + Kopf-Schaltflaechen passend ein-/ausblenden.
+   *  Im Seiten-Modus wird der Chat erzwungen geoeffnet (er IST die Seite). */
+  private applyMode(): void {
+    const m = this.mode;
+    this.rootDiv.classList.toggle('mode-floating', m === 'floating');
+    this.rootDiv.classList.toggle('mode-drawer', m === 'drawer');
+    this.rootDiv.classList.toggle('mode-page', m === 'page');
+    this.rootDiv.classList.toggle('launcher-none', this.launcherKind === 'none');
+    // Punchout nur im Drawer, Verkleinern nur auf der Seite, Schliessen nicht
+    // auf der Seite, Bubble nur bei launcher="bubble" und nicht im Seiten-Modus.
+    this.punchoutBtn.hidden = m !== 'drawer';
+    this.minimizeBtn.hidden = m !== 'page';
+    this.closeBtn.hidden = m === 'page';
+    this.bubbleBtn.hidden = this.launcherKind === 'none' || m === 'page';
+    if (m === 'page') this.open(false, false);
+  }
+
+  /** Wirt (godelmann.de) schmaler schieben, solange der Drawer offen ist.
+   *  Setzt margin-right + weiche Animation am <html> und eine Marker-Klasse,
+   *  an die EINE dokumentierte Agentur-CSS-Regel die festen Elemente
+   *  (Header, Rail) mitzieht. Alles reversibel (close + disconnect). */
+  private applyHostPush(on: boolean): void {
+    if (on === this.hostPushed) return;
+    const root = document.documentElement;
+    if (on) {
+      const w = getComputedStyle(this).getPropertyValue('--gdm-chat-drawer-width').trim() || '480px';
+      // Waehrend der Drawer offen ist, horizontales Scrollen des Wirts
+      // unterdruecken (der herein schiebende Panel-Rand darf keine
+      // Scrollleiste ausloesen). Vorwert merken und beim Schliessen zurueck.
+      this.prevHtmlOverflowX = root.style.overflowX || '';
+      root.style.overflowX = 'hidden';
+      root.style.marginRight = w;
+      root.style.transition = 'margin-right 0.8s ease';
+      root.classList.add('gdm-chat-drawer-open');
+      this.hostPushed = true;
+    } else {
+      root.style.marginRight = '';
+      root.classList.remove('gdm-chat-drawer-open');
+      if (this.prevHtmlOverflowX !== null) {
+        root.style.overflowX = this.prevHtmlOverflowX;
+        this.prevHtmlOverflowX = null;
+      }
+      // transition am Ende der Ruecknahme wieder entfernen (kein Dauerzustand).
+      root.style.transition = '';
+      this.hostPushed = false;
+    }
+  }
+
+  /** Host-Elemente mit `data-gdm-chat-launcher` verdrahten (click -> toggle,
+   *  aria-expanded spiegeln). Nur bei launcher="none" — sonst gibt es die
+   *  eigene Bubble. Idempotent. */
+  private wireRailLaunchers(): void {
+    if (this.launcherKind !== 'none') return;
+    const found = Array.from(document.querySelectorAll<HTMLElement>('[data-gdm-chat-launcher]'));
+    for (const el of found) {
+      if (this.railLaunchers.includes(el)) continue;
+      const handler = (e: Event): void => { e.preventDefault(); this.toggle(); };
+      el.addEventListener('click', handler);
+      railHandlers.set(el, handler);
+      el.setAttribute('aria-expanded', String(this.isOpen));
+      this.railLaunchers.push(el);
+    }
+  }
+
+  private unwireRailLaunchers(): void {
+    for (const el of this.railLaunchers) {
+      const h = railHandlers.get(el);
+      if (h) { el.removeEventListener('click', h); railHandlers.delete(el); }
+      el.removeAttribute('aria-expanded');
+    }
+    this.railLaunchers = [];
+  }
+
+  /** `aria-expanded` an eigener Bubble UND allen Rail-Ausloesern spiegeln. */
+  private syncLauncherState(): void {
+    for (const el of this.railLaunchers) el.setAttribute('aria-expanded', String(this.isOpen));
+  }
+
+  /** Imperative Steuerung von aussen ohne Element-Referenz: Ereignisse am
+   *  `document` (gdm-chat:open|close|toggle). Gegenstueck zu den vom Widget
+   *  GEMELDETEN Ereignissen (gdm-chat:opened|closed, andere Namen -> keine
+   *  Rueckkopplung). */
+  private bindDocumentEvents(): void {
+    if (this.docHandlers) return;
+    this.docHandlers = {
+      open: () => this.open(),
+      close: () => this.close(),
+      toggle: () => this.toggle(),
+    };
+    document.addEventListener('gdm-chat:open', this.docHandlers.open);
+    document.addEventListener('gdm-chat:close', this.docHandlers.close);
+    document.addEventListener('gdm-chat:toggle', this.docHandlers.toggle);
+  }
+
+  /** Punchout (Drawer -> Vollseite): Sitzung sichern, dann zur Seite wechseln.
+   *  Gleiche Origin -> gleiches sessionStorage -> nahtlose Unterhaltung. */
+  private punchout(): void {
+    this.saveSession();
+    window.location.assign(this.pageUrl);
+  }
+
+  /** Verkleinern (Vollseite -> Drawer der vorigen Seite). Gab es eine
+   *  same-origin-Vorseite, dorthin zurueck (der Drawer oeffnet dort via
+   *  restoreSession wieder); sonst sauber auf die Startseite. */
+  private minimizeToDrawer(): void {
+    this.saveSession();
+    let sameOrigin = false;
+    try {
+      sameOrigin = !!document.referrer && new URL(document.referrer).origin === window.location.origin;
+    } catch { /* ungueltiger Referrer */ }
+    if (sameOrigin && window.history.length > 1) window.history.back();
+    else window.location.assign('/');
   }
 
   private resetConversation(): void {
@@ -942,12 +1207,16 @@ export class GodelmannChatbot extends HTMLElement {
   // --- Barrierefreiheit: Fokus-Trap + ESC ---------------------------------
 
   private onPanelKeydown(e: KeyboardEvent): void {
-    if (e.key === 'Escape') {
+    // ESC schliesst floating + Drawer; auf der Vollseite gibt es nichts zu
+    // schliessen (das Panel IST die Seite).
+    if (e.key === 'Escape' && this.mode !== 'page') {
       e.preventDefault();
       this.close();
       return;
     }
-    if (e.key !== 'Tab') return;
+    // Fokus-Trap NUR fuer die schwebende Bubble (modaler Dialog). Im Drawer/auf
+    // der Seite bleibt Tab frei, damit man die uebrige Seite erreichen kann.
+    if (e.key !== 'Tab' || this.mode !== 'floating') return;
     const focusables = Array.from(
       this.panel.querySelectorAll<HTMLElement>('button, textarea, a[href]'),
     ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
