@@ -1,10 +1,20 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-02 (Paket-Version **0.0.8**, test)
+> Stand: 2026-08-03 (Paket-Version **0.0.9**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.9 (2026-08-03, test)** — **Gespraech als echte KI-Konversation** (Paritaet zum
+  Gravelli-Berater, Heike-Ablauf strikt): Begruessung + kuratierte Antworten als echte
+  Bot-Bubbles mit simulierter Denkzeit (1,0-1,5 s Typing); Zielgruppen-Wahl als
+  Nutzer-Echo ("Ich bin Fachkunde/Endkunde"); Button-Klicks erscheinen als ausformulierte
+  natuerliche Frage (neues `frage`-Feld je Aktion); verbose Fliesstext-Intros;
+  **Fortsetzungsfragen-Chips nach jeder Modell-Antwort** (Server-Zusatz-Event
+  `spass_followups`, aufgefuellt mit dem Zweig-Menue, max 6, dedupliziert); Slot-Filling:
+  einmalige, freundliche Zielgruppen-Nachfrage, wenn per Freitext uebersprungen (persistiertes
+  Flag `zielgruppeGefragt`; der stumme endkunde-Default entfaellt); busy-Haertung fuer
+  Chips/Zweig-Klicks waehrend laufender Antworten. PLZ-Ansprechpartner-Flow unveraendert.
 - **0.0.8 (2026-08-02, test)** — **Drawer- und Seiten-Modus (Einbindung als Teil der
   Seite).** Bisher nur schwebende Bubble; jetzt drei Darstellungsformen ueber das neue
   Attribut `mode`: `floating` (unveraendert), **`drawer`** (rechter Seiten-Drawer, der die

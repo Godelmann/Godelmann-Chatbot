@@ -33,6 +33,8 @@ interface StoredSession {
   messages: { role: 'user' | 'assistant' | 'error'; text: string; isGreeting?: boolean; retryText?: string }[];
   stage: 'greeting' | 'endkunde' | 'fachkunde';
   awaitingPlz: boolean;
+  /** Slot-Filling: wurde die einmalige Zielgruppen-Nachfrage schon gestellt? */
+  zielgruppeGefragt?: boolean;
   draft: string;
   /** Cursor-/Auswahlposition — sonst springt der Cursor ans Ende. */
   cursor?: { start: number; end: number };
@@ -86,8 +88,10 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     bubbleClose: 'Godelmann-Assistent schliessen',
     headerTitle: 'Godelmann-Assistent',
     greeting:
-      'Willkommen bei GODELMANN! Sind Sie Fachkunde oder Endkunde? ' +
-      'Waehlen Sie einfach eine Option oder schreiben Sie mir direkt Ihre Frage.',
+      'Willkommen bei GODELMANN. Ich berate Sie rund um unsere Produkte, ' +
+      'Flächen und Ideen für Garten, Haus und Objekt. Damit ich Sie gezielt ' +
+      'beraten kann: Sind Sie Fachkunde oder Endkunde? Wählen Sie einfach ' +
+      'unten aus — oder schreiben Sie mir direkt Ihre Frage.',
     inputPlaceholder: 'Ihre Frage …',
     send: 'Senden',
     newConversation: 'Neue Unterhaltung',
@@ -113,8 +117,10 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     bubbleClose: 'Close Godelmann assistant',
     headerTitle: 'Godelmann Assistant',
     greeting:
-      'Welcome to GODELMANN! Are you a trade professional or a private customer? ' +
-      'Pick an option or just type your question.',
+      'Welcome to GODELMANN. I can advise you on our products, surfaces and ' +
+      'ideas for garden, home and commercial projects. To give you targeted ' +
+      'advice: are you a trade professional or a private customer? Simply ' +
+      'choose below — or type your question right away.',
     inputPlaceholder: 'Your question …',
     send: 'Send',
     newConversation: 'New conversation',
@@ -145,56 +151,191 @@ const TEXTS: Record<'de' | 'en', Texts> = {
 type Branch = 'endkunde' | 'fachkunde';
 // linkKey -> wenn in /api/webchat-config eine URL hinterlegt ist, oeffnet der
 // Button diese (administrierbar); sonst Fallback auf die geerdete Frage `ask`.
-interface QuickAction { label: string; ask?: string; special?: 'plz'; linkKey?: string }
+// `frage` = die ausformulierte Ich-/W-Frage, die beim Klick als Nutzer-Echo im
+// Verlauf erscheint (das Label bleibt der kurze Chip-Text).
+interface QuickAction { label: string; frage: string; ask?: string; special?: 'plz'; linkKey?: string }
 
 const BRANCH_INTRO: Record<'de' | 'en', Record<Branch, string>> = {
   de: {
-    endkunde: 'Schoen, dass Sie da sind. Wobei koennen wir Sie unterstuetzen?',
-    fachkunde: 'Willkommen im Fachkundenbereich. Wobei koennen wir Sie unterstuetzen?',
+    endkunde:
+      'Schön, dass Sie da sind. Ich zeige Ihnen gerne unsere Produkte für ' +
+      'Garten, Terrasse und Einfahrt, Inspirationen und Gestaltungsideen, das ' +
+      'aktuelle Gartenbuch, unsere Neuheiten oder einen Ideengarten in Ihrer ' +
+      'Nähe — und helfe Ihnen beim Produktvergleich, bei der Händlersuche ' +
+      'oder mit dem Kontakt zur Service-Hotline. Wählen Sie unten ein Thema — ' +
+      'oder schreiben Sie mir einfach Ihre Frage.',
+    fachkunde:
+      'Willkommen im Fachkundenbereich. Ich unterstütze Sie gerne bei ' +
+      'Produkten und Themen zur Objektplanung, in der Mediathek mit ' +
+      'Ausschreibungstexten, Datenblättern und BIM/CAD-Daten, mit ' +
+      'Referenzprojekten, beim Produktvergleich oder bei der Suche nach Ihrem ' +
+      'Ansprechpartner vor Ort. Wählen Sie unten ein Thema — oder schreiben ' +
+      'Sie mir einfach Ihre Frage.',
   },
   en: {
-    endkunde: 'Great to have you here. How can we help you?',
-    fachkunde: 'Welcome to the trade area. How can we help you?',
+    endkunde:
+      'Great to have you here. I am happy to show you our products for ' +
+      'garden, terrace and driveway, inspiration and design ideas, the ' +
+      'current garden book, our latest products or an idea garden near you — ' +
+      'and to help you find a dealer or reach our service hotline. Pick a ' +
+      'topic below — or simply type your question.',
+    fachkunde:
+      'Welcome to the trade area. I can support you with products and topics ' +
+      'for object planning, the media library with tender texts, datasheets ' +
+      'and BIM/CAD data, reference projects or finding your local contact ' +
+      'person. Pick a topic below — or simply type your question.',
   },
 };
 
 const BRANCH_ACTIONS: Record<'de' | 'en', Record<Branch, QuickAction[]>> = {
   de: {
     endkunde: [
-      { label: 'Produkte entdecken', ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?' },
-      { label: 'Inspirationen fuer Garten & Terrasse', linkKey: 'inspirationen', ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.' },
-      { label: 'Gartenbuch', linkKey: 'gartenbuch', ask: 'Wo finde ich das aktuelle Godelmann-Gartenbuch zum Herunterladen?' },
-      { label: 'Neuheiten', linkKey: 'neuheiten', ask: 'Was sind die aktuellen Neuheiten von Godelmann?' },
-      { label: 'Ideengarten besuchen', linkKey: 'ideengarten', ask: 'Wo gibt es einen Godelmann-Ideengarten, den ich besuchen kann?' },
-      { label: 'Produkte vergleichen', ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).' },
-      { label: 'Haendlersuche', linkKey: 'haendlersuche', ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?' },
-      { label: 'Service-Hotline', ask: 'Wie erreiche ich die GODELMANN-Beratung bzw. Service-Hotline?' },
+      {
+        label: 'Produkte entdecken',
+        frage: 'Welche Produkte gibt es?',
+        ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?',
+      },
+      {
+        label: 'Inspirationen fuer Garten & Terrasse',
+        frage: 'Wo finde ich Inspirationen für Garten und Terrasse?',
+        linkKey: 'inspirationen',
+        ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.',
+      },
+      {
+        label: 'Gartenbuch',
+        frage: 'Wo finde ich das aktuelle Gartenbuch?',
+        linkKey: 'gartenbuch',
+        ask: 'Wo finde ich das aktuelle Godelmann-Gartenbuch zum Herunterladen?',
+      },
+      {
+        label: 'Neuheiten',
+        frage: 'Was gibt es Neues bei GODELMANN?',
+        linkKey: 'neuheiten',
+        ask: 'Was sind die aktuellen Neuheiten von Godelmann?',
+      },
+      {
+        label: 'Ideengarten besuchen',
+        frage: 'Wo kann ich einen Ideengarten besuchen?',
+        linkKey: 'ideengarten',
+        ask: 'Wo gibt es einen Godelmann-Ideengarten, den ich besuchen kann?',
+      },
+      {
+        label: 'Produkte vergleichen',
+        frage: 'Können Sie zwei Produkte für mich vergleichen?',
+        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+      },
+      {
+        label: 'Haendlersuche',
+        frage: 'Wie finde ich einen Händler in meiner Nähe?',
+        linkKey: 'haendlersuche',
+        ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?',
+      },
+      {
+        label: 'Service-Hotline',
+        frage: 'Wie erreiche ich die Service-Hotline?',
+        ask: 'Wie erreiche ich die GODELMANN-Beratung bzw. Service-Hotline?',
+      },
     ],
     fachkunde: [
-      { label: 'Produkte', ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?' },
-      { label: 'Themen zur Objektplanung', linkKey: 'objektplanung', ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?' },
-      { label: 'Mediathek (Downloads, Ausschreibung, BIM/CAD)', linkKey: 'mediathek', ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?' },
-      { label: 'Referenzen', linkKey: 'referenzen', ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.' },
-      { label: 'Produkte vergleichen', ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).' },
-      { label: 'Ansprechpartner finden', special: 'plz' },
+      {
+        label: 'Produkte',
+        frage: 'Welche Produkte gibt es für die Objektplanung?',
+        ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?',
+      },
+      {
+        label: 'Themen zur Objektplanung',
+        frage: 'Welche Themen und Lösungen gibt es zur Objektplanung?',
+        linkKey: 'objektplanung',
+        ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?',
+      },
+      {
+        label: 'Mediathek (Downloads, Ausschreibung, BIM/CAD)',
+        frage: 'Wo finde ich Ausschreibungstexte, Datenblätter und BIM/CAD-Daten?',
+        linkKey: 'mediathek',
+        ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?',
+      },
+      {
+        label: 'Referenzen',
+        frage: 'Welche Referenzprojekte gibt es?',
+        linkKey: 'referenzen',
+        ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.',
+      },
+      {
+        label: 'Produkte vergleichen',
+        frage: 'Können Sie zwei Produkte für mich vergleichen?',
+        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+      },
+      {
+        label: 'Ansprechpartner finden',
+        frage: 'Wer ist mein Ansprechpartner vor Ort?',
+        special: 'plz',
+      },
     ],
   },
   en: {
     endkunde: [
-      { label: 'Discover products', ask: 'Which Godelmann products are available for garden, terrace and driveway?' },
-      { label: 'Inspiration for garden & terrace', ask: 'Show me inspiration and design ideas for garden and terrace by Godelmann.' },
-      { label: 'Garden book', ask: 'Where can I download the current Godelmann garden book?' },
-      { label: 'New products', ask: 'What are the latest Godelmann product news?' },
-      { label: 'Visit an idea garden', ask: 'Where can I visit a Godelmann idea garden?' },
-      { label: 'Find a dealer', ask: 'How do I find a Godelmann dealer near me?' },
-      { label: 'Service hotline', ask: 'How do I reach the GODELMANN advisory / service hotline?' },
+      {
+        label: 'Discover products',
+        frage: 'Which products are available?',
+        ask: 'Which Godelmann products are available for garden, terrace and driveway?',
+      },
+      {
+        label: 'Inspiration for garden & terrace',
+        frage: 'Where can I find inspiration for garden and terrace?',
+        ask: 'Show me inspiration and design ideas for garden and terrace by Godelmann.',
+      },
+      {
+        label: 'Garden book',
+        frage: 'Where can I find the current garden book?',
+        ask: 'Where can I download the current Godelmann garden book?',
+      },
+      {
+        label: 'New products',
+        frage: 'What is new at GODELMANN?',
+        ask: 'What are the latest Godelmann product news?',
+      },
+      {
+        label: 'Visit an idea garden',
+        frage: 'Where can I visit an idea garden?',
+        ask: 'Where can I visit a Godelmann idea garden?',
+      },
+      {
+        label: 'Find a dealer',
+        frage: 'How do I find a dealer near me?',
+        ask: 'How do I find a Godelmann dealer near me?',
+      },
+      {
+        label: 'Service hotline',
+        frage: 'How do I reach the service hotline?',
+        ask: 'How do I reach the GODELMANN advisory / service hotline?',
+      },
     ],
     fachkunde: [
-      { label: 'Products', ask: 'Which Godelmann products are relevant for object planning?' },
-      { label: 'Object planning topics', ask: 'Which topics and solutions does Godelmann offer for object planning?' },
-      { label: 'Media library (downloads, tender texts, BIM/CAD)', ask: 'What is in the Godelmann media library — tender texts, datasheets, BIM and CAD data?' },
-      { label: 'References', ask: 'Show me Godelmann reference projects, e.g. for public spaces.' },
-      { label: 'Find a contact person', special: 'plz' },
+      {
+        label: 'Products',
+        frage: 'Which products are available for object planning?',
+        ask: 'Which Godelmann products are relevant for object planning?',
+      },
+      {
+        label: 'Object planning topics',
+        frage: 'Which topics and solutions are available for object planning?',
+        ask: 'Which topics and solutions does Godelmann offer for object planning?',
+      },
+      {
+        label: 'Media library (downloads, tender texts, BIM/CAD)',
+        frage: 'Where do I find tender texts, datasheets and BIM/CAD data?',
+        ask: 'What is in the Godelmann media library — tender texts, datasheets, BIM and CAD data?',
+      },
+      {
+        label: 'References',
+        frage: 'Which reference projects are there?',
+        ask: 'Show me Godelmann reference projects, e.g. for public spaces.',
+      },
+      {
+        label: 'Find a contact person',
+        frage: 'Who is my local contact person?',
+        special: 'plz',
+      },
     ],
   },
 };
@@ -204,9 +345,28 @@ const WEICHE_LABELS: Record<'de' | 'en', { fach: string; end: string }> = {
   en: { fach: 'Trade professional', end: 'Private customer' },
 };
 
+/** Nutzer-Echo beim Klick auf die Zielgruppen-Weiche (wie eine getippte Antwort). */
+const BIN_LABELS: Record<'de' | 'en', Record<Branch, string>> = {
+  de: { fachkunde: 'Ich bin Fachkunde', endkunde: 'Ich bin Endkunde' },
+  en: { fachkunde: 'I am a trade professional', endkunde: 'I am a private customer' },
+};
+
 const PLZ_PROMPT: Record<'de' | 'en', string> = {
   de: 'Bitte geben Sie Ihre Postleitzahl ein, dann nenne ich Ihnen Ihren zustaendigen Ansprechpartner.',
   en: 'Please enter your postal code and I will name your responsible contact person.',
+};
+
+/** Slot-Filling: einmalige Nachfrage, wenn die Zielgruppe nach der ersten
+ *  Freitext-Antwort noch unklar ist (stage bleibt 'greeting'). */
+const ZIELGRUPPEN_NACHFRAGE: Record<'de' | 'en', string> = {
+  de:
+    'Übrigens: Damit ich Sie noch gezielter beraten kann — sind Sie Fachkunde ' +
+    '(etwa Architektur, Planung oder GaLaBau) oder Endkunde? Wählen Sie unten ' +
+    'aus oder fragen Sie einfach weiter.',
+  en:
+    'By the way: to give you even more targeted advice — are you a trade ' +
+    'professional (e.g. architecture, planning or landscaping) or a private ' +
+    'customer? Choose below or simply keep asking.',
 };
 
 // Heikes Stichwortlisten fuer die automatische Zielgruppen-Erkennung bei Freitext.
@@ -641,7 +801,17 @@ export class GodelmannChatbot extends HTMLElement {
   // Guided-Selling-Flow (Ablaufplan Heike): Zielgruppen-Weiche vor dem KI-Chat.
   private stage: 'greeting' | Branch = 'greeting';
   private awaitingPlz = false;
-  private weicheRow: HTMLElement | null = null;
+  /** Die EINE aktuelle Vorschlags-Chip-Reihe (Server-Followups + Zweig-Menue). */
+  private suggestRow: HTMLElement | null = null;
+  /** Denkzeit-Timer der kuratierten Antworten — resetConversation und
+   *  disconnectedCallback raeumen ihn auf (sonst schriebe er nach dem
+   *  Aufraeumen noch in eine verworfene Blase). */
+  private curatedTimer: number | null = null;
+  /** Slot-Filling: wurde bei unklarer Zielgruppe schon EINMAL nachgefasst? */
+  private zielgruppeGefragt = false;
+  /** `spass_followups` der laufenden/letzten Modell-Antwort (Zusatz-Event des
+   *  Servers vor `[DONE]`): 2-3 vom Modell erzeugte Fortsetzungsfragen. */
+  private lastFollowups: string[] = [];
   // Administrierbare Link-Ziele (GET /api/webchat-config): linkKey -> URL.
   private links: Record<string, string> = {};
   private configLoaded = false;
@@ -744,6 +914,12 @@ export class GodelmannChatbot extends HTMLElement {
    *  am <html> haengen, wenn das Element zur Laufzeit ersetzt wird. */
   disconnectedCallback(): void {
     this.abortCtrl?.abort();
+    if (this.curatedTimer !== null) {
+      window.clearTimeout(this.curatedTimer);
+      this.curatedTimer = null;
+      this.busy = false;
+      this.sendBtn.disabled = false;
+    }
     this.applyHostPush(false);
     if (this.docHandlers) {
       document.removeEventListener('gdm-chat:open', this.docHandlers.open);
@@ -776,6 +952,7 @@ export class GodelmannChatbot extends HTMLElement {
       })),
       stage: this.stage,
       awaitingPlz: this.awaitingPlz,
+      ...(this.zielgruppeGefragt ? { zielgruppeGefragt: true } : {}),
       draft: el?.value ?? '',
       ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
       ...(this.inputFocused ? { focused: true } : {}),
@@ -818,12 +995,11 @@ export class GodelmannChatbot extends HTMLElement {
       }
       this.stage = s.stage === 'endkunde' || s.stage === 'fachkunde' ? s.stage : 'greeting';
       this.awaitingPlz = s.awaitingPlz === true;
+      // Alte Sitzungen (vor v0.0.9) kennen das Feld nicht -> false.
+      this.zielgruppeGefragt = s.zielgruppeGefragt === true;
       // Passende Auswahl-Schaltflaechen wieder anbieten, sonst haengt das
       // Gespraech ohne Weiterweg fest.
-      if (!this.awaitingPlz) {
-        if (this.stage === 'greeting') this.showZielgruppenWeiche();
-        else this.showBranchActions(this.stage);
-      }
+      if (!this.awaitingPlz) this.showSuggestions([]);
       if (typeof s.draft === 'string') this.input.value = s.draft;
     } finally {
       this.restoring = false;
@@ -1029,8 +1205,12 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleClose);
     this.syncLauncherState();
     if (this.messages.length === 0) {
-      this.appendMessage({ role: 'assistant', text: this.greetingText, isGreeting: true });
-      this.showZielgruppenWeiche();
+      // Begruessung wie eine echte Modell-Antwort ausspielen (simulierte
+      // Denkzeit), danach die Zielgruppen-Chips.
+      this.appendCuratedMessage(
+        { role: 'assistant', text: this.greetingText, isGreeting: true },
+        () => this.showSuggestions([]),
+      );
     }
     // Administrierbare Link-Ziele laden (fire-and-forget; Fallback = AI-Frage).
     void this.loadConfig();
@@ -1185,6 +1365,10 @@ export class GodelmannChatbot extends HTMLElement {
   private resetConversation(): void {
     this.abortCtrl?.abort();
     this.abortCtrl = null;
+    if (this.curatedTimer !== null) {
+      window.clearTimeout(this.curatedTimer);
+      this.curatedTimer = null;
+    }
     this.convGen++;
     this.busy = false;
     this.sendBtn.disabled = false;
@@ -1198,9 +1382,13 @@ export class GodelmannChatbot extends HTMLElement {
     this.messagesEl.replaceChildren();
     this.stage = 'greeting';
     this.awaitingPlz = false;
-    this.weicheRow = null;
-    this.appendMessage({ role: 'assistant', text: this.greetingText, isGreeting: true });
-    this.showZielgruppenWeiche();
+    this.suggestRow = null;
+    this.zielgruppeGefragt = false;
+    this.lastFollowups = [];
+    this.appendCuratedMessage(
+      { role: 'assistant', text: this.greetingText, isGreeting: true },
+      () => this.showSuggestions([]),
+    );
     this.input.focus();
   }
 
@@ -1247,9 +1435,44 @@ export class GodelmannChatbot extends HTMLElement {
     return entry;
   }
 
+  /**
+   * Kuratierte (hartkodierte) Antwort mit simulierter Denkzeit ausspielen,
+   * damit sie sich wie eine echte Modell-Antwort anfuehlt: erst eine leere
+   * pending-Blase (Tipp-Indikator), nach 1000-1500 ms der Text in DERSELBEN
+   * Blase. Waehrend der Denkzeit ist das Widget busy (Senden gesperrt,
+   * Chip-Klicks werden ignoriert). `after` laeuft nach dem Ausspielen —
+   * z. B. um die naechsten Chips zu zeigen. Bricht ein Neuladen die Denkzeit
+   * ab, verwirft restoreSession die leere Blase (Wegwerf-Logik dort).
+   */
+  private appendCuratedMessage(entry: MessageEntry, after?: () => void): void {
+    const pending = this.appendMessage({
+      role: 'assistant',
+      text: '',
+      ...(entry.isGreeting ? { isGreeting: true } : {}),
+    });
+    pending.el?.classList.add('pending');
+    this.busy = true;
+    this.sendBtn.disabled = true;
+    this.curatedTimer = window.setTimeout(() => {
+      this.curatedTimer = null;
+      // Begruessung zur Ausspielzeit aufloesen: falls `lang`/`greeting`
+      // waehrend der Denkzeit wechselte, gewinnt der aktuelle Text.
+      pending.text = pending.isGreeting ? this.greetingText : entry.text;
+      if (pending.el) {
+        pending.el.classList.remove('pending');
+        pending.el.innerHTML = renderMarkdown(pending.text);
+      }
+      this.busy = false;
+      this.sendBtn.disabled = false;
+      this.scrollToEnd();
+      this.saveSession();
+      after?.();
+    }, 1000 + Math.random() * 500);
+  }
+
   // --- Guided Selling / Zielgruppen-Weiche (Ablaufplan Heike, 20.07.) -------
 
-  private appendQuickReplies(items: { label: string; onClick: () => void }[], once = false): HTMLElement {
+  private appendQuickReplies(items: { label: string; onClick: () => void }[]): HTMLElement {
     const row = document.createElement('div');
     row.className = 'quickreplies';
     for (const it of items) {
@@ -1257,10 +1480,7 @@ export class GodelmannChatbot extends HTMLElement {
       b.type = 'button';
       b.className = 'qr';
       b.textContent = it.label;
-      b.addEventListener('click', () => {
-        if (once) row.remove();
-        it.onClick();
-      });
+      b.addEventListener('click', () => it.onClick());
       row.appendChild(b);
     }
     this.messagesEl.appendChild(row);
@@ -1268,55 +1488,88 @@ export class GodelmannChatbot extends HTMLElement {
     return row;
   }
 
-  /** Begruessung -> Buttons "Fachkunde / Endkunde" (Schritt 1 des Ablaufplans). */
-  private showZielgruppenWeiche(): void {
-    const l = WEICHE_LABELS[this.langKey];
-    this.weicheRow = this.appendQuickReplies(
-      [
-        { label: l.fach, onClick: () => this.chooseBranch('fachkunde') },
-        { label: l.end, onClick: () => this.chooseBranch('endkunde') },
-      ],
-      true,
-    );
+  /** Vorherige Vorschlags-Reihe entfernen — es existiert immer nur EINE. */
+  private clearSuggestions(): void {
+    this.suggestRow?.remove();
+    this.suggestRow = null;
   }
 
-  /** Zielgruppe gewaehlt -> passendes Guided-Selling-Menue (Schritt 2/3). */
+  /**
+   * Die EINE aktuelle Vorschlags-Reihe rendern: erst die Server-Followups
+   * (Klick -> die Frage geht 1:1 an den Bot, Label = Frage), dann als
+   * Auffuellung das Menue des aktuellen Zweigs (max. 6 Chips gesamt, nach
+   * Label dedupliziert) bzw. in der Begruessungs-Stufe die Zielgruppen-Chips.
+   * Ohne Followups (leeres Array) = reines Zweig-Menue wie bisher (ungekappt).
+   */
+  private showSuggestions(followups: string[]): void {
+    this.clearSuggestions();
+    const items: { label: string; onClick: () => void }[] = [];
+    const seen = new Set<string>();
+    for (const f of followups) {
+      const frage = f.trim();
+      if (frage === '' || seen.has(frage) || items.length >= 6) continue;
+      seen.add(frage);
+      items.push({ label: frage, onClick: () => { void this.startChat(frage); } });
+    }
+    if (this.stage === 'greeting') {
+      // Zielgruppen-Chips IMMER anhaengen (Schritt 1 bzw. Slot-Filling).
+      const l = WEICHE_LABELS[this.langKey];
+      if (!seen.has(l.fach)) items.push({ label: l.fach, onClick: () => this.chooseBranch('fachkunde') });
+      if (!seen.has(l.end)) items.push({ label: l.end, onClick: () => this.chooseBranch('endkunde') });
+    } else {
+      // Ohne Followups das volle Menue (wie bisher), sonst auf 6 auffuellen.
+      const max = followups.length > 0 ? 6 : Number.POSITIVE_INFINITY;
+      for (const a of BRANCH_ACTIONS[this.langKey][this.stage]) {
+        if (items.length >= max) break;
+        if (seen.has(a.label)) continue;
+        seen.add(a.label);
+        items.push({ label: a.label, onClick: () => this.runQuickAction(a) });
+      }
+    }
+    if (items.length === 0) return;
+    this.suggestRow = this.appendQuickReplies(items);
+  }
+
+  /** Zielgruppe gewaehlt -> Nutzer-Echo + kuratierte Zweig-Begruessung (mit
+   *  Denkzeit), danach das Guided-Selling-Menue (Schritt 2/3). */
   private chooseBranch(branch: Branch): void {
+    if (this.busy) return;
+    this.clearSuggestions();
     this.stage = branch;
-    this.weicheRow = null;
-    this.appendMessage({ role: 'assistant', text: BRANCH_INTRO[this.langKey][branch] });
-    this.showBranchActions(branch);
-    this.saveSession();
-  }
-
-  /** Das Menue eines Zweigs anzeigen. Eigene Methode, weil es nach einem
-   *  Seitenwechsel ohne erneute Begruessung wiederhergestellt werden muss. */
-  private showBranchActions(branch: Branch): void {
-    this.appendQuickReplies(
-      BRANCH_ACTIONS[this.langKey][branch].map((a) => ({
-        label: a.label,
-        onClick: () => this.runQuickAction(a),
-      })),
+    this.appendMessage({ role: 'user', text: BIN_LABELS[this.langKey][branch] });
+    this.appendCuratedMessage(
+      { role: 'assistant', text: BRANCH_INTRO[this.langKey][branch] },
+      () => this.showSuggestions([]),
     );
   }
 
   private runQuickAction(a: QuickAction): void {
+    if (this.busy) return;
+    this.clearSuggestions();
     if (a.special === 'plz') {
       // Fachkunde-Ansprechpartner: PLZ erfragen -> /api/contact (deterministisch).
-      this.awaitingPlz = true;
-      this.appendMessage({ role: 'assistant', text: PLZ_PROMPT[this.langKey] });
-      this.input.focus();
-      this.saveSession();
+      // awaitingPlz erst NACH der Denkzeit setzen: bricht ein Neuladen die
+      // pending-Aufforderung ab, erwartet die Sitzung dann auch keine PLZ.
+      this.appendMessage({ role: 'user', text: a.frage });
+      this.appendCuratedMessage({ role: 'assistant', text: PLZ_PROMPT[this.langKey] }, () => {
+        this.awaitingPlz = true;
+        this.saveSession();
+        this.input.focus();
+      });
       return;
     }
     // Administrierbares Link-Ziel (falls hinterlegt) -> als klickbaren Link ausspielen.
     const url = a.linkKey ? this.links[a.linkKey] : undefined;
     if (url) {
+      this.appendMessage({ role: 'user', text: a.frage });
       const lead = this.langKey === 'en' ? 'Here you go' : 'Gerne — hier entlang';
-      this.appendMessage({ role: 'assistant', text: `${lead}: [${a.label}](${url})` });
+      this.appendCuratedMessage(
+        { role: 'assistant', text: `${lead}: [${a.label}](${url})` },
+        () => this.showSuggestions([]),
+      );
       return;
     }
-    if (a.ask) void this.startChat(a.ask);
+    if (a.ask) void this.startChat(a.ask, a.frage);
   }
 
   /** Administrierbare Link-Ziele laden (GET /api/webchat-config), einmalig. */
@@ -1368,6 +1621,8 @@ export class GodelmannChatbot extends HTMLElement {
     // Sonst haengt nach einem Seitenwechsel dauerhaft "Einen Moment, ich
     // suche ..." im Verlauf - die Antwort selbst waere nie gespeichert worden.
     this.saveSession();
+    // Weiterweg anbieten: die Chip-Reihe wurde beim Klick entfernt.
+    this.showSuggestions([]);
   }
 
   private appendErrorMessage(text: string, retryText?: string): void {
@@ -1451,17 +1706,22 @@ export class GodelmannChatbot extends HTMLElement {
     }
 
     // Begruessung: Freitext -> Zielgruppe automatisch erkennen (Heikes
-    // Stichwortlisten) und stumm zuordnen; Weiche-Buttons entfernen.
+    // Stichwortlisten). Ohne Treffer bleibt die Stufe 'greeting' — nach der
+    // Antwort fasst der Assistent EINMAL gezielt nach (Slot-Filling,
+    // afterModelAnswer), statt stumm 'endkunde' anzunehmen.
     if (this.stage === 'greeting') {
-      this.stage = classifyBranch(text) ?? 'endkunde';
-      this.weicheRow?.remove();
-      this.weicheRow = null;
+      const erkannt = classifyBranch(text);
+      if (erkannt) this.stage = erkannt;
     }
 
     await this.startChat(text);
   }
 
-  private async startChat(text: string): Promise<void> {
+  /** `anzeige` (optional): Text der User-Bubble, falls er von der an den
+   *  Server gehenden Frage abweicht (Chip-Klick: kurze frage statt langem
+   *  ask). Die User-Bubble entsteht NUR hier — Aufrufer posten kein eigenes
+   *  Echo, damit sie nie doppelt erscheint. */
+  private async startChat(text: string, anzeige?: string): Promise<void> {
     if (this.busy) return;
     // Merken, zu welcher Unterhaltung dieser Lauf gehoert: bricht ihn
     // "Neue Unterhaltung" ab, darf seine Fehlermeldung nicht mehr in die
@@ -1469,15 +1729,19 @@ export class GodelmannChatbot extends HTMLElement {
     const gen = this.convGen;
     this.busy = true;
     this.sendBtn.disabled = true;
+    this.clearSuggestions();
+    this.lastFollowups = [];
 
-    this.appendMessage({ role: 'user', text });
+    this.appendMessage({ role: 'user', text: anzeige ?? text });
     this.emit('gdm-chat:message-sent', { message: text });
     const assistant = this.appendMessage({ role: 'assistant', text: '' });
     assistant.el?.classList.add('pending');
 
+    let ok = false;
     try {
       await this.requestChat(text, assistant, true);
       this.emit('gdm-chat:response-received', { message: assistant.text });
+      ok = true;
     } catch (err) {
       // Lauf gehoert zu einer inzwischen verworfenen Unterhaltung: still enden.
       if (gen !== this.convGen) return;
@@ -1503,6 +1767,26 @@ export class GodelmannChatbot extends HTMLElement {
       this.sendBtn.disabled = false;
       if (this.isOpen) this.input.focus();
     }
+    // NACH dem finally (busy wieder frei): Followup-Chips bzw. einmalige
+    // Zielgruppen-Nachfrage — die kuratierte Denkzeit braucht ihr eigenes
+    // busy-Fenster.
+    if (ok && gen === this.convGen) this.afterModelAnswer();
+  }
+
+  /** Nach jeder erfolgreichen Modell-Antwort: Vorschlags-Chips zeigen und —
+   *  falls die Zielgruppe noch offen ist — EINMAL nachfassen (Slot-Filling). */
+  private afterModelAnswer(): void {
+    const followups = this.lastFollowups;
+    this.lastFollowups = [];
+    if (this.stage === 'greeting' && !this.zielgruppeGefragt) {
+      this.zielgruppeGefragt = true;
+      this.appendCuratedMessage(
+        { role: 'assistant', text: ZIELGRUPPEN_NACHFRAGE[this.langKey] },
+        () => this.showSuggestions(followups),
+      );
+      return;
+    }
+    this.showSuggestions(followups);
   }
 
   private async requestChat(
@@ -1624,6 +1908,10 @@ export class GodelmannChatbot extends HTMLElement {
         }
         try {
           const parsed: unknown = JSON.parse(dataPayload);
+          // Zusatz-Event des Servers vor [DONE]: vom Modell erzeugte
+          // Fortsetzungsfragen fuer die Vorschlags-Chips (afterModelAnswer).
+          const followups = extractFollowups(parsed);
+          if (followups) this.lastFollowups = followups;
           const content = extractDeltaContent(parsed);
           if (content) {
             assistant.text += content;
@@ -1660,6 +1948,15 @@ export class GodelmannChatbot extends HTMLElement {
   private emit(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
+}
+
+/** `spass_followups` (Server-Zusatz-Event vor `[DONE]`) aus einem SSE-Event
+ *  ziehen: Array von Fortsetzungsfragen. `null` = Feld nicht vorhanden. */
+function extractFollowups(parsed: unknown): string[] | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const raw = (parsed as { spass_followups?: unknown }).spass_followups;
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((f): f is string => typeof f === 'string' && f.trim() !== '');
 }
 
 /** `choices[0].delta.content` aus einem OpenAI-chat.completion.chunk ziehen. */
