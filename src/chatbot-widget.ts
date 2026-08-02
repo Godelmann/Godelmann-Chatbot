@@ -408,13 +408,17 @@ class ChatError extends Error {
 const STYLE = /* css */ `
   :host {
     /* Dokumentierte Theming-Hooks */
-    --_accent: var(--gdm-chat-accent, #E52D12);
+    /* Godelmann-CI (Farbpalette in Godelmann/CLAUDE.md): Red 100 #E54F35,
+       Red 90 #B33E29 (Hover), Anthracite 100/80/30/15/10.
+       Vorher standen hier freie Naeherungen (#E52D12, #1c1c1c, #f7f7f7 ...),
+       die neben der echten Website sichtbar danebenlagen. */
+    --_accent: var(--gdm-chat-accent, #E54F35);
     --_z: var(--gdm-chat-z-index, 2147483000);
     --_font: var(--gdm-chat-font, inherit);
   }
   *, *::before, *::after { box-sizing: border-box; }
 
-  .root { font-family: var(--_font); font-size: 15px; line-height: 1.45; color: #1c1c1c; }
+  .root { font-family: var(--_font); font-size: 15px; line-height: 1.45; color: #3F4549; }
 
   /* --- Floating-Bubble --- */
   .bubble {
@@ -427,7 +431,7 @@ const STYLE = /* css */ `
     transition: transform 0.15s ease;
   }
   .bubble:hover { transform: scale(1.06); }
-  .bubble:focus-visible { outline: 3px solid #1c1c1c; outline-offset: 2px; }
+  .bubble:focus-visible { outline: 3px solid #3F4549; outline-offset: 2px; }
   .bubble svg { width: 28px; height: 28px; }
   .root.pos-right .bubble { right: 24px; }
   .root.pos-left .bubble { left: 24px; }
@@ -463,11 +467,11 @@ const STYLE = /* css */ `
   .messages {
     flex: 1 1 auto; overflow-y: auto; padding: 14px;
     display: flex; flex-direction: column; gap: 10px;
-    background: #f7f7f7;
+    background: #ECEDED;
   }
   .msg { max-width: 86%; padding: 8px 12px; border-radius: 10px; overflow-wrap: break-word; }
   .msg.user { align-self: flex-end; background: var(--_accent); color: #fff; border-bottom-right-radius: 3px; }
-  .msg.assistant { align-self: flex-start; background: #fff; border: 1px solid #e3e3e3; border-bottom-left-radius: 3px; }
+  .msg.assistant { align-self: flex-start; background: #fff; border: 1px solid #E2E3E3; border-bottom-left-radius: 3px; }
   .quickreplies { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; max-width: 92%; margin: 2px 0 2px; }
   .qr {
     border: 1px solid var(--_accent); color: var(--_accent); background: #fff;
@@ -476,18 +480,18 @@ const STYLE = /* css */ `
   }
   .qr:hover { background: var(--_accent); color: #fff; }
   .qr:focus-visible { outline: 2px solid var(--_accent); outline-offset: 2px; }
-  .msg.error { align-self: flex-start; background: #fdf0ee; border: 1px solid var(--_accent); color: #8c1c0b; }
+  .msg.error { align-self: flex-start; background: #F2A79A; border: 1px solid var(--_accent); color: #B33E29; }
   .msg p { margin: 0 0 8px; }
   .msg p:last-child { margin-bottom: 0; }
   .msg ul, .msg ol { margin: 4px 0; padding-left: 20px; }
   .msg a { color: var(--_accent); text-decoration: underline; }
   .msg img.chatimg { max-height: 120px; width: auto; max-width: 100%; border-radius: 6px; margin: 4px 6px 4px 0; display: inline-block; vertical-align: top; }
   .msg a.chatimg-link { position: relative; display: inline-block; line-height: 0; }
-  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: #E52D12; color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; border-radius: 3px; pointer-events: none; }
+  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: #E54F35; color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; border-radius: 3px; pointer-events: none; }
   .msg .tablewrap { overflow-x: auto; margin: 4px 0; }
   .msg table { border-collapse: collapse; width: 100%; font-size: 12px; }
-  .msg th, .msg td { border: 1px solid #e3e3e3; padding: 4px 7px; text-align: left; vertical-align: top; }
-  .msg th { background: #f6f6f6; font-weight: 600; }
+  .msg th, .msg td { border: 1px solid #E2E3E3; padding: 4px 7px; text-align: left; vertical-align: top; }
+  .msg th { background: #ECEDED; font-weight: 600; }
   .msg.user a { color: #fff; }
   .msg .retry {
     display: block; margin-top: 8px; border: 1px solid var(--_accent);
@@ -504,12 +508,12 @@ const STYLE = /* css */ `
 
   .inputrow {
     display: flex; gap: 8px; padding: 10px 12px; background: #fff;
-    border-top: 1px solid #e3e3e3; flex-shrink: 0;
+    border-top: 1px solid #E2E3E3; flex-shrink: 0;
   }
   .inputrow textarea {
-    flex: 1 1 auto; resize: none; border: 1px solid #c9c9c9; border-radius: 8px;
+    flex: 1 1 auto; resize: none; border: 1px solid #C5C7C8; border-radius: 8px;
     padding: 8px 10px; font: inherit; min-height: 38px; max-height: 110px;
-    background: #fff; color: #1c1c1c;
+    background: #fff; color: #3F4549;
   }
   .inputrow textarea:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
   .inputrow .send {
@@ -518,11 +522,11 @@ const STYLE = /* css */ `
     cursor: pointer;
   }
   .inputrow .send:disabled { opacity: 0.55; cursor: default; }
-  .inputrow .send:focus-visible { outline: 2px solid #1c1c1c; outline-offset: 1px; }
+  .inputrow .send:focus-visible { outline: 2px solid #3F4549; outline-offset: 1px; }
 
   .privacy {
     padding: 6px 12px 10px; background: #fff; flex-shrink: 0;
-    font-size: 12px; color: #6b6b6b;
+    font-size: 12px; color: #656A6D;
   }
   .privacy a { color: var(--_accent); }
 
@@ -540,9 +544,9 @@ const BUBBLE_ICON = `
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H9.4L5.6 19.6c-.66.53-1.6.06-1.6-.78V5.5Z"
       fill="currentColor"/>
-    <circle cx="8.6" cy="9.6" r="1.15" fill="#E52D12" class="dot"/>
-    <circle cx="12" cy="9.6" r="1.15" fill="#E52D12" class="dot"/>
-    <circle cx="15.4" cy="9.6" r="1.15" fill="#E52D12" class="dot"/>
+    <circle cx="8.6" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
+    <circle cx="12" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
+    <circle cx="15.4" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
   </svg>`;
 
 // ---------------------------------------------------------------------------
