@@ -1,10 +1,23 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-03 (Paket-Version **0.0.9**, test)
+> Stand: 2026-08-03 (Paket-Version **0.0.10**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.10 (2026-08-03, test)** — **Webchat-QS: Feedback + Transcript-Melder.** An jeder
+  fertigen Assistent-Antwort eine dezente Feedback-Leiste (Daumen hoch/runter + Inline-
+  Kommentar; Upsert `POST /api/qs/feedback` mit vollem Zustand, 300-ms-Debounce, Klick auf
+  den aktiven Daumen = zuruecknehmen; Zustand persistiert im Sitzungs-Gedaechtnis und
+  kommt nach Seitenwechsel zurueck). Transcript-Melder: jede FERTIGE Nachricht (mit Art
+  begruessung|zielgruppe|frage|kuratiert|antwort|nachfrage|fehler, Latenz und den
+  Vorschlags-Chips der letzten Antwort) gesammelt als Batch an `POST /api/qs/transcript`
+  (Debounce 2 s, max 40/Batch, serverseitig idempotent je (sitzung_id, message_id)); bei
+  `pagehide` Flush per `sendBeacon` (text/plain = preflight-frei). Neu: stabile `qsId` je
+  Nachricht (crypto.randomUUID, zentral in appendMessage) + `sitzungId` je Unterhaltung
+  („Neue Unterhaltung" vergibt eine frische und flusht die alte). Session-Restore ist
+  self-healing (einmaliges idempotentes Nachsenden, Leisten kommen wieder, keine
+  Doppel-Leisten). Bundle 18,1 kB gzip (Gate < 80 kB).
 - **0.0.9 (2026-08-03, test)** — **Gespraech als echte KI-Konversation** (Paritaet zum
   Gravelli-Berater, Heike-Ablauf strikt): Begruessung + kuratierte Antworten als echte
   Bot-Bubbles mit simulierter Denkzeit (1,0-1,5 s Typing); Zielgruppen-Wahl als

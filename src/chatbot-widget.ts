@@ -28,13 +28,31 @@ const LS_CONVERSATION_KEY = 'gdm-chat-conversation-id';
  */
 const SS_SESSION_KEY = 'gdm-chat-session';
 
+/** Serialisierte Nachricht im Sitzungs-Gedaechtnis: Untermenge von
+ *  MessageEntry ohne DOM-Referenz. Die QS-Felder sind optional — Sitzungen
+ *  vor v0.0.10 kennen sie nicht und muessen trotzdem laden. */
+interface StoredMessage {
+  role: 'user' | 'assistant' | 'error';
+  text: string;
+  isGreeting?: boolean;
+  retryText?: string;
+  qsId?: string;
+  ts?: number;
+  latencyMs?: number;
+  art?: string;
+  rating?: 1 | -1;
+  comment?: string;
+}
+
 interface StoredSession {
   open: boolean;
-  messages: { role: 'user' | 'assistant' | 'error'; text: string; isGreeting?: boolean; retryText?: string }[];
+  messages: StoredMessage[];
   stage: 'greeting' | 'endkunde' | 'fachkunde';
   awaitingPlz: boolean;
   /** Slot-Filling: wurde die einmalige Zielgruppen-Nachfrage schon gestellt? */
   zielgruppeGefragt?: boolean;
+  /** QS-Sitzungs-ID fuer /api/qs/* — bleibt ueber Seitenwechsel stabil. */
+  sitzungId?: string;
   draft: string;
   /** Cursor-/Auswahlposition — sonst springt der Cursor ans Ende. */
   cursor?: { start: number; end: number };
@@ -80,6 +98,12 @@ interface Texts {
   errInvalidMessage: string;
   errGeneric: string;
   retry: string;
+  /** QS-Feedback-Leiste an Assistent-Antworten */
+  fbUp: string;
+  fbDown: string;
+  fbComment: string;
+  fbCancel: string;
+  fbYourComment: string;
 }
 
 const TEXTS: Record<'de' | 'en', Texts> = {
@@ -111,6 +135,11 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     errInvalidMessage: 'Die Nachricht ist leer oder zu lang (maximal 2000 Zeichen).',
     errGeneric: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
     retry: 'Erneut versuchen',
+    fbUp: 'Antwort war hilfreich',
+    fbDown: 'Antwort war nicht hilfreich',
+    fbComment: 'Kommentar zu dieser Antwort',
+    fbCancel: 'Abbrechen',
+    fbYourComment: 'Ihr Kommentar',
   },
   en: {
     bubbleOpen: 'Open Godelmann assistant',
@@ -138,6 +167,11 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     errInvalidMessage: 'The message is empty or too long (2000 characters max).',
     errGeneric: 'Something went wrong. Please try again.',
     retry: 'Retry',
+    fbUp: 'Answer was helpful',
+    fbDown: 'Answer was not helpful',
+    fbComment: 'Comment on this answer',
+    fbCancel: 'Cancel',
+    fbYourComment: 'Your comment',
   },
 };
 
@@ -672,6 +706,40 @@ const STYLE = /* css */ `
     padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px;
   }
   .msg .retry:hover { background: var(--_accent); color: #fff; }
+
+  /* --- Feedback-Leiste (QS): kleine, dezente Daumen-/Kommentar-Knoepfe
+     unter jeder fertigen Assistent-Antwort (Vorbild .msg .retry). --- */
+  .fb { display: flex; gap: 4px; margin-top: 8px; }
+  .fb button {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #E2E3E3; background: #fff; color: #656A6D;
+    border-radius: 6px; padding: 3px 7px; cursor: pointer; font: inherit;
+    line-height: 1;
+  }
+  .fb button svg { width: 14px; height: 14px; }
+  .fb button:hover { border-color: var(--_accent); color: var(--_accent); }
+  .fb button.active { background: var(--_accent); border-color: var(--_accent); color: #fff; }
+  .fb button:focus-visible { outline: 2px solid var(--_accent); outline-offset: 1px; }
+  .fb-note { margin-top: 6px; font-size: 12px; color: #656A6D; }
+  .fb-note[hidden] { display: none; }
+  /* Inline-Kommentar-Formular (per Kommentar-Knopf auf-/zuklappbar) */
+  .fb-form { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+  /* display:flex schlaegt das UA-[hidden] — wie bei .bubble explizit durchsetzen. */
+  .fb-form[hidden] { display: none; }
+  .fb-form textarea {
+    resize: none; border: 1px solid #C5C7C8; border-radius: 6px;
+    padding: 6px 8px; font: inherit; font-size: 13px; min-height: 48px;
+    background: #fff; color: #3F4549;
+  }
+  .fb-form textarea:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
+  .fb-actions { display: flex; gap: 6px; }
+  .fb-actions button {
+    border: 1px solid var(--_accent); background: #fff; color: var(--_accent);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px;
+  }
+  .fb-actions button.fb-send { background: var(--_accent); color: #fff; }
+  .fb-actions button:hover { background: #B33E29; border-color: #B33E29; color: #fff; }
+
   .msg.pending::after {
     content: ''; display: inline-block; width: 9px; height: 9px;
     margin-left: 6px; border-radius: 50%; background: var(--_accent);
@@ -756,6 +824,22 @@ const BUBBLE_ICON = `
     <circle cx="15.4" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
   </svg>`;
 
+/** Feedback-Icons (Inline-SVG, kein neues Asset): Daumen hoch/runter +
+ *  Kommentar. Gefuellt via currentColor — der aktive Zustand invertiert
+ *  ueber die CSS-Klasse .active (Accent-Hintergrund, weisses Icon). */
+const FB_ICON_UP = `
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M2 21h4V9H2v12Zm20-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.58 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2Z"/>
+  </svg>`;
+const FB_ICON_DOWN = `
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path transform="rotate(180 12 12)" d="M2 21h4V9H2v12Zm20-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.58 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2Z"/>
+  </svg>`;
+const FB_ICON_COMMENT = `
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2Z"/>
+  </svg>`;
+
 // ---------------------------------------------------------------------------
 // Custom Element
 // ---------------------------------------------------------------------------
@@ -766,6 +850,23 @@ interface MessageEntry {
   isGreeting?: boolean;
   el?: HTMLDivElement;
   retryText?: string;
+  /** QS: stabile Nachrichten-ID (uuid beim Anlegen, appendMessage zentral). */
+  qsId?: string;
+  /** QS: Anlegezeit (Date.now) — Basis fuer ts_client + Latenzmessung. */
+  ts?: number;
+  /** QS: Antwortlatenz in ms (Modell: startChat-Beginn bis fertig gerendert;
+   *  kuratiert: die simulierte Denkzeit). */
+  latencyMs?: number;
+  /** QS: Nachrichtenart — begruessung|zielgruppe|frage|kuratiert|antwort|nachfrage|fehler. */
+  art?: string;
+  /** QS-Feedback: Daumen hoch (1) / runter (-1); fehlt = keine Wertung. */
+  rating?: 1 | -1;
+  /** QS-Feedback: Freitext-Kommentar des Besuchers. */
+  comment?: string;
+  /** Nur Laufzeit (bewusst NICHT serialisiert): schon an /api/qs/transcript
+   *  gemeldet? Nach restoreSession wieder false — Nachsenden ist idempotent
+   *  (Server dedupliziert je (sitzung_id, message_id)) = self-healing. */
+  qsSent?: boolean;
 }
 
 /** Klick-Handler je verdrahtetem Rail-Ausloeser (fuer sauberes Abmelden). */
@@ -840,6 +941,18 @@ export class GodelmannChatbot extends HTMLElement {
   private hostPushed = false;
   /** Vorheriger inline `overflow-x` von <html> — beim Schliessen wiederhergestellt. */
   private prevHtmlOverflowX: string | null = null;
+  /** QS-Sitzungs-ID fuer /api/qs/* — je Unterhaltung; "Neue Unterhaltung"
+   *  vergibt eine frische, restoreSession holt die alte zurueck. */
+  private sitzungId = '';
+  /** Transcript-Melder: fertige, noch nicht gemeldete Nachrichten (Debounce 2 s). */
+  private qsQueue: MessageEntry[] = [];
+  private qsTimer: number | null = null;
+  /** Feedback-Debounce je Nachricht (300 ms gegen Schnellklick-Races). */
+  private readonly fbTimers = new Map<MessageEntry, number>();
+  /** Labels der aktuell gezeigten Vorschlags-Chips (fuer `vorschlaege` im Transcript). */
+  private suggestLabels: string[] = [];
+  /** pagehide-Flush (sendBeacon) — Referenz zum sauberen Abmelden. */
+  private pagehideHandler: (() => void) | null = null;
 
   constructor() {
     super();
@@ -905,6 +1018,13 @@ export class GodelmannChatbot extends HTMLElement {
     this.applyMode();
     this.wireRailLaunchers();
     this.bindDocumentEvents();
+    // QS-Flush beim Verlassen der Seite: sendBeacon (text/plain-Blob =
+    // preflight-frei cross-origin), damit die letzten Nachrichten/Feedbacks
+    // den Server noch erreichen, obwohl godelmann.de bei jedem Klick neu laedt.
+    if (!this.pagehideHandler) {
+      this.pagehideHandler = (): void => { this.flushAllQs(true); };
+      window.addEventListener('pagehide', this.pagehideHandler);
+    }
   }
 
   /** Wird beim Entfernen aus dem DOM aufgerufen (godelmann.de laedt bei jeder
@@ -926,6 +1046,13 @@ export class GodelmannChatbot extends HTMLElement {
       document.removeEventListener('gdm-chat:close', this.docHandlers.close);
       document.removeEventListener('gdm-chat:toggle', this.docHandlers.toggle);
       this.docHandlers = null;
+    }
+    // Offene QS-Meldungen noch rausschicken (Element wird zur Laufzeit
+    // ersetzt/entfernt), dann den pagehide-Listener abmelden.
+    this.flushAllQs(true);
+    if (this.pagehideHandler) {
+      window.removeEventListener('pagehide', this.pagehideHandler);
+      this.pagehideHandler = null;
     }
     this.unwireRailLaunchers();
   }
@@ -949,10 +1076,18 @@ export class GodelmannChatbot extends HTMLElement {
         text: m.role === 'assistant' ? visibleAnswer(m.text) : m.text,
         ...(m.isGreeting ? { isGreeting: true } : {}),
         ...(m.retryText ? { retryText: m.retryText } : {}),
+        // QS-Metadaten konditional (Muster retryText) — Speicher schlank halten.
+        ...(m.qsId ? { qsId: m.qsId } : {}),
+        ...(m.ts ? { ts: m.ts } : {}),
+        ...(m.latencyMs ? { latencyMs: m.latencyMs } : {}),
+        ...(m.art ? { art: m.art } : {}),
+        ...(m.rating ? { rating: m.rating } : {}),
+        ...(m.comment ? { comment: m.comment } : {}),
       })),
       stage: this.stage,
       awaitingPlz: this.awaitingPlz,
       ...(this.zielgruppeGefragt ? { zielgruppeGefragt: true } : {}),
+      ...(this.sitzungId ? { sitzungId: this.sitzungId } : {}),
       draft: el?.value ?? '',
       ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
       ...(this.inputFocused ? { focused: true } : {}),
@@ -981,17 +1116,32 @@ export class GodelmannChatbot extends HTMLElement {
     }
     if (verlauf.length === 0 && !s.draft) return;
 
+    // QS-Sitzungs-ID zurueckholen; Alt-Sitzungen ohne Feld bekommen eine
+    // frische (der Verlauf wird unten ohnehin einmal nachgesendet).
+    if (typeof s.sitzungId === 'string' && s.sitzungId !== '') this.sitzungId = s.sitzungId;
+    else if (this.sitzungId === '') this.sitzungId = uuid();
+
     this.restoring = true;
     try {
       for (const m of verlauf) {
         if (!m || typeof m.text !== 'string') continue;
         if (m.role !== 'user' && m.role !== 'assistant' && m.role !== 'error') continue;
+        // QS-Metadaten mitnehmen; fehlen sie (Alt-Sitzung vor v0.0.10),
+        // vergibt appendMessage frische — der Server dedupliziert ohnehin.
+        const qs = {
+          ...(typeof m.qsId === 'string' && m.qsId !== '' ? { qsId: m.qsId } : {}),
+          ...(typeof m.ts === 'number' ? { ts: m.ts } : {}),
+          ...(typeof m.latencyMs === 'number' ? { latencyMs: m.latencyMs } : {}),
+          ...(typeof m.art === 'string' && m.art !== '' ? { art: m.art } : {}),
+          ...(m.rating === 1 || m.rating === -1 ? { rating: m.rating } : {}),
+          ...(typeof m.comment === 'string' && m.comment !== '' ? { comment: m.comment } : {}),
+        };
         if (m.role === 'error') {
           // ueber appendErrorMessage, damit der "Erneut versuchen"-Knopf mitkommt
-          this.appendErrorMessage(m.text, m.retryText);
+          this.appendErrorMessage(m.text, m.retryText, qs);
           continue;
         }
-        this.appendMessage({ role: m.role, text: m.text, ...(m.isGreeting ? { isGreeting: true } : {}) });
+        this.appendMessage({ role: m.role, text: m.text, ...(m.isGreeting ? { isGreeting: true } : {}), ...qs });
       }
       this.stage = s.stage === 'endkunde' || s.stage === 'fachkunde' ? s.stage : 'greeting';
       this.awaitingPlz = s.awaitingPlz === true;
@@ -1001,9 +1151,20 @@ export class GodelmannChatbot extends HTMLElement {
       // Gespraech ohne Weiterweg fest.
       if (!this.awaitingPlz) this.showSuggestions([]);
       if (typeof s.draft === 'string') this.input.value = s.draft;
+      // Feedback-Leisten wieder anbauen + Verlauf einmal nachsenden
+      // (self-healing: `qsSent` wird nicht serialisiert, das Nachsenden ist
+      // serverseitig idempotent).
+      for (const m of this.messages) {
+        if (m.role === 'assistant' && m.text.trim() !== '') this.attachFeedbackBar(m);
+        this.queueQs(m);
+      }
     } finally {
       this.restoring = false;
     }
+    // Einmal zuruecksichern: Alt-Sitzungen haben soeben frische qsIds/
+    // sitzungId bekommen — ungesichert bekaeme JEDER Reload neue IDs und
+    // der Server saehe denselben Verlauf mehrfach.
+    this.saveSession();
 
     if (s.open) {
       this.open(false, false);
@@ -1180,7 +1341,12 @@ export class GodelmannChatbot extends HTMLElement {
     for (const m of this.messages) {
       if (m.isGreeting) {
         m.text = this.greetingText;
-        if (m.el) m.el.innerHTML = renderMarkdown(m.text);
+        if (m.el) {
+          m.el.innerHTML = renderMarkdown(m.text);
+          // innerHTML hat eine vorhandene Feedback-Leiste mit entfernt ->
+          // neu anbauen (nicht an der noch tippenden pending-Blase).
+          if (!m.el.classList.contains('pending')) this.attachFeedbackBar(m);
+        }
       }
     }
   }
@@ -1200,6 +1366,9 @@ export class GodelmannChatbot extends HTMLElement {
   open(fokussieren = true, alsBenutzeraktion = true): void {
     if (this.isOpen) return;
     this.isOpen = true;
+    // QS-Sitzung sicherstellen (persistiert via saveSession; "Neue
+    // Unterhaltung" vergibt in resetConversation eine frische).
+    if (this.sitzungId === '') this.sitzungId = uuid();
     this.panel.hidden = false;
     this.bubbleBtn.setAttribute('aria-expanded', 'true');
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleClose);
@@ -1363,6 +1532,9 @@ export class GodelmannChatbot extends HTMLElement {
   }
 
   private resetConversation(): void {
+    // Offene QS-Meldungen der ALTEN Unterhaltung noch rausschicken (Beacon:
+    // synchron gebaut, fire-and-forget), bevor Verlauf + Sitzung wechseln.
+    this.flushAllQs(true);
     this.abortCtrl?.abort();
     this.abortCtrl = null;
     if (this.curatedTimer !== null) {
@@ -1385,6 +1557,9 @@ export class GodelmannChatbot extends HTMLElement {
     this.suggestRow = null;
     this.zielgruppeGefragt = false;
     this.lastFollowups = [];
+    this.qsQueue = [];
+    this.suggestLabels = [];
+    this.sitzungId = uuid();
     this.appendCuratedMessage(
       { role: 'assistant', text: this.greetingText, isGreeting: true },
       () => this.showSuggestions([]),
@@ -1424,6 +1599,12 @@ export class GodelmannChatbot extends HTMLElement {
   // --- Nachrichten-Rendering ----------------------------------------------
 
   private appendMessage(entry: MessageEntry): MessageEntry {
+    // QS-Metadaten zentral vergeben: stabile ID + Anlegezeit je Nachricht.
+    // Die Art faellt auf Rollen-Defaults zurueck, wenn der Aufrufer nichts
+    // Spezielleres setzt (z. B. 'zielgruppe', 'kuratiert', 'nachfrage').
+    if (!entry.qsId) entry.qsId = uuid();
+    if (!entry.ts) entry.ts = Date.now();
+    if (!entry.art) entry.art = entry.role === 'error' ? 'fehler' : entry.role === 'user' ? 'frage' : 'antwort';
     const el = document.createElement('div');
     el.className = `msg ${entry.role}`;
     el.innerHTML = renderMarkdown(entry.text);
@@ -1432,6 +1613,10 @@ export class GodelmannChatbot extends HTMLElement {
     this.messagesEl.appendChild(el);
     this.scrollToEnd();
     this.saveSession();
+    // Transcript-Melder: User-Echos + Fehlermeldungen sind sofort fertig.
+    // Assistent-Blasen meldet erst finishRender/appendCuratedMessage —
+    // NIE die leere pending-Blase.
+    if (entry.role !== 'assistant') this.queueQs(entry);
     return entry;
   }
 
@@ -1449,6 +1634,9 @@ export class GodelmannChatbot extends HTMLElement {
       role: 'assistant',
       text: '',
       ...(entry.isGreeting ? { isGreeting: true } : {}),
+      // QS-Art: Begruessung eigenstaendig, sonst 'kuratiert' — Spezielleres
+      // (z. B. 'nachfrage') gibt der Aufrufer im entry vor.
+      art: entry.art ?? (entry.isGreeting ? 'begruessung' : 'kuratiert'),
     });
     pending.el?.classList.add('pending');
     this.busy = true;
@@ -1458,14 +1646,18 @@ export class GodelmannChatbot extends HTMLElement {
       // Begruessung zur Ausspielzeit aufloesen: falls `lang`/`greeting`
       // waehrend der Denkzeit wechselte, gewinnt der aktuelle Text.
       pending.text = pending.isGreeting ? this.greetingText : entry.text;
+      // QS: die simulierte Denkzeit ist die Latenz der kuratierten Antwort.
+      pending.latencyMs = Date.now() - (pending.ts ?? Date.now());
       if (pending.el) {
         pending.el.classList.remove('pending');
         pending.el.innerHTML = renderMarkdown(pending.text);
       }
+      this.attachFeedbackBar(pending);
       this.busy = false;
       this.sendBtn.disabled = false;
       this.scrollToEnd();
       this.saveSession();
+      this.queueQs(pending);
       after?.();
     }, 1000 + Math.random() * 500);
   }
@@ -1492,6 +1684,7 @@ export class GodelmannChatbot extends HTMLElement {
   private clearSuggestions(): void {
     this.suggestRow?.remove();
     this.suggestRow = null;
+    this.suggestLabels = [];
   }
 
   /**
@@ -1526,6 +1719,9 @@ export class GodelmannChatbot extends HTMLElement {
         items.push({ label: a.label, onClick: () => this.runQuickAction(a) });
       }
     }
+    // Fuer den Transcript-Melder: die aktuell gezeigten Chip-Labels gehoeren
+    // als `vorschlaege` zur LETZTEN Assistent-Nachricht.
+    this.suggestLabels = items.map((i) => i.label);
     if (items.length === 0) return;
     this.suggestRow = this.appendQuickReplies(items);
   }
@@ -1536,7 +1732,7 @@ export class GodelmannChatbot extends HTMLElement {
     if (this.busy) return;
     this.clearSuggestions();
     this.stage = branch;
-    this.appendMessage({ role: 'user', text: BIN_LABELS[this.langKey][branch] });
+    this.appendMessage({ role: 'user', text: BIN_LABELS[this.langKey][branch], art: 'zielgruppe' });
     this.appendCuratedMessage(
       { role: 'assistant', text: BRANCH_INTRO[this.langKey][branch] },
       () => this.showSuggestions([]),
@@ -1595,6 +1791,7 @@ export class GodelmannChatbot extends HTMLElement {
     const pending = this.appendMessage({
       role: 'assistant',
       text: de ? 'Einen Moment, ich suche Ihren Ansprechpartner …' : 'One moment, looking up your contact …',
+      art: 'kuratiert',
     });
     try {
       const res = await fetch(`${this.apiBase}/api/contact?plz=${encodeURIComponent(clean)}`);
@@ -1616,17 +1813,24 @@ export class GodelmannChatbot extends HTMLElement {
         ? 'Die Ansprechpartner-Suche ist gerade nicht erreichbar. Bitte versuchen Sie es spaeter erneut.'
         : 'The contact lookup is currently unavailable. Please try again later.';
     }
+    // QS: Dauer der Ansprechpartner-Suche als Latenz.
+    pending.latencyMs = Date.now() - (pending.ts ?? Date.now());
     if (pending.el) pending.el.innerHTML = renderMarkdown(pending.text);
+    this.attachFeedbackBar(pending);
     this.scrollToEnd();
     // Sonst haengt nach einem Seitenwechsel dauerhaft "Einen Moment, ich
     // suche ..." im Verlauf - die Antwort selbst waere nie gespeichert worden.
     this.saveSession();
+    this.queueQs(pending);
     // Weiterweg anbieten: die Chip-Reihe wurde beim Klick entfernt.
     this.showSuggestions([]);
   }
 
-  private appendErrorMessage(text: string, retryText?: string): void {
-    const entry = this.appendMessage({ role: 'error', text, ...(retryText ? { retryText } : {}) });
+  /** `meta`: QS-Metadaten beim Wiederherstellen (qsId/ts/art) — sonst
+   *  bekaeme dieselbe Fehlermeldung nach jedem Reload eine NEUE ID und
+   *  stuende beim Server mehrfach im Transcript. */
+  private appendErrorMessage(text: string, retryText?: string, meta?: Partial<MessageEntry>): void {
+    const entry = this.appendMessage({ ...meta, role: 'error', text, ...(retryText ? { retryText } : {}) });
     if (retryText && entry.el) {
       entry.retryText = retryText;
       const btn = document.createElement('button');
@@ -1781,7 +1985,7 @@ export class GodelmannChatbot extends HTMLElement {
     if (this.stage === 'greeting' && !this.zielgruppeGefragt) {
       this.zielgruppeGefragt = true;
       this.appendCuratedMessage(
-        { role: 'assistant', text: ZIELGRUPPEN_NACHFRAGE[this.langKey] },
+        { role: 'assistant', text: ZIELGRUPPEN_NACHFRAGE[this.langKey], art: 'nachfrage' },
         () => this.showSuggestions(followups),
       );
       return;
@@ -1933,14 +2137,265 @@ export class GodelmannChatbot extends HTMLElement {
   /** Stream-Ende: Reasoning entfernen, saubere Antwort rendern + als Verlauf sichern. */
   private finishRender(assistant: MessageEntry): void {
     assistant.text = visibleAnswer(assistant.text);
+    // QS: Latenz = Anlegen der Blase (startChat-Beginn) bis fertig gerendert.
+    assistant.latencyMs = Date.now() - (assistant.ts ?? Date.now());
     if (assistant.el) {
       assistant.el.innerHTML = renderMarkdown(assistant.text);
       this.scrollToEnd();
+    }
+    // Feedback + Transcript nur fuer echte Antworten — eine leer gebliebene
+    // Blase (Stream ohne Inhalt) bekommt weder Leiste noch Meldung.
+    if (assistant.text.trim() !== '') {
+      this.attachFeedbackBar(assistant);
+      this.queueQs(assistant);
     }
     // Ohne dieses Sichern verschwindet die fertige Antwort beim naechsten
     // Seitenwechsel: die Blase wurde beim Anlegen noch LEER gespeichert und
     // beim Wiederherstellen als "abgebrochen" verworfen.
     this.saveSession();
+  }
+
+  // --- Webchat-QS: Feedback + Transcript-Melder (/api/qs/*) ------------------
+  // Beide Endpunkte sind idempotente Upserts (Server dedupliziert je
+  // (sitzung_id, message_id)) — naives Nachsenden ist erlaubt und erwuenscht.
+  // QS ist best effort: kein Fehlerpfad darf den Chat selbst stoeren.
+
+  /**
+   * Feedback-Leiste (Daumen hoch/runter + Kommentar) an eine FERTIGE
+   * Assistent-Blase haengen (role assistant, nie error). Idempotent:
+   * existiert schon eine .fb-Leiste (z. B. nach restoreSession), wird nur
+   * der Zustand nachgezogen — sonst stuenden doppelte Leisten in der Blase.
+   */
+  private attachFeedbackBar(entry: MessageEntry): void {
+    if (entry.role !== 'assistant' || !entry.el) return;
+    if (entry.el.querySelector('.fb')) {
+      this.syncFeedbackBar(entry);
+      return;
+    }
+    const t = this.texts;
+    const mkBtn = (cls: string, label: string, icon: string): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls;
+      b.setAttribute('aria-label', label);
+      b.setAttribute('title', label);
+      b.innerHTML = icon;
+      return b;
+    };
+    const bar = document.createElement('div');
+    bar.className = 'fb';
+    const up = mkBtn('fb-up', t.fbUp, FB_ICON_UP);
+    const down = mkBtn('fb-down', t.fbDown, FB_ICON_DOWN);
+    const cmt = mkBtn('fb-comment', t.fbComment, FB_ICON_COMMENT);
+    bar.append(up, down, cmt);
+
+    // Kommentar-Anzeige unter der Leiste. Befuellung ausschliesslich per
+    // textContent (syncFeedbackBar) — Nutzertext wird nie als HTML geparst
+    // (gleiches Sicherheitsniveau wie escapeHtml, ohne HTML-Parser).
+    const note = document.createElement('div');
+    note.className = 'fb-note';
+    note.hidden = true;
+
+    // Inline-Kommentar-Formular (zugeklappt; 'Senden' uebernimmt, 'Abbrechen'
+    // verwirft). Bewusst ein div, kein <form> — kein implizites Submit.
+    const form = document.createElement('div');
+    form.className = 'fb-form';
+    form.hidden = true;
+    const ta = document.createElement('textarea');
+    ta.maxLength = MAX_MESSAGE_CHARS;
+    ta.setAttribute('aria-label', t.fbComment);
+    const actions = document.createElement('div');
+    actions.className = 'fb-actions';
+    const sendB = document.createElement('button');
+    sendB.type = 'button';
+    sendB.className = 'fb-send';
+    sendB.textContent = t.send;
+    const cancelB = document.createElement('button');
+    cancelB.type = 'button';
+    cancelB.className = 'fb-cancel';
+    cancelB.textContent = t.fbCancel;
+    actions.append(sendB, cancelB);
+    form.append(ta, actions);
+
+    const vote = (v: 1 | -1): void => {
+      // Klick auf den bereits aktiven Daumen = Wertung zuruecknehmen (vote 0).
+      if (entry.rating === v) delete entry.rating;
+      else entry.rating = v;
+      this.syncFeedbackBar(entry);
+      this.saveSession();
+      this.sendFeedback(entry);
+    };
+    up.addEventListener('click', () => vote(1));
+    down.addEventListener('click', () => vote(-1));
+    cmt.addEventListener('click', () => {
+      form.hidden = !form.hidden;
+      cmt.setAttribute('aria-expanded', String(!form.hidden));
+      if (!form.hidden) {
+        // Bestehenden Kommentar zum erneuten Bearbeiten vorbelegen.
+        ta.value = entry.comment ?? '';
+        ta.focus();
+      }
+    });
+    sendB.addEventListener('click', () => {
+      const text = ta.value.trim();
+      if (text === '') delete entry.comment;
+      else entry.comment = text;
+      form.hidden = true;
+      cmt.setAttribute('aria-expanded', 'false');
+      this.syncFeedbackBar(entry);
+      this.saveSession();
+      this.sendFeedback(entry);
+    });
+    cancelB.addEventListener('click', () => {
+      form.hidden = true;
+      cmt.setAttribute('aria-expanded', 'false');
+    });
+
+    entry.el.append(bar, note, form);
+    this.syncFeedbackBar(entry);
+  }
+
+  /** Zustand (aktiver Daumen, Kommentar-Text) in die bestehende Leiste spiegeln. */
+  private syncFeedbackBar(entry: MessageEntry): void {
+    const el = entry.el;
+    if (!el) return;
+    const up = el.querySelector('.fb-up');
+    const down = el.querySelector('.fb-down');
+    up?.classList.toggle('active', entry.rating === 1);
+    up?.setAttribute('aria-pressed', String(entry.rating === 1));
+    down?.classList.toggle('active', entry.rating === -1);
+    down?.setAttribute('aria-pressed', String(entry.rating === -1));
+    const note = el.querySelector<HTMLElement>('.fb-note');
+    if (note) {
+      if (entry.comment) {
+        // textContent statt innerHTML: Nutzertext darf NIE als Markup enden.
+        note.textContent = `${this.texts.fbYourComment}: ${entry.comment}`;
+        note.hidden = false;
+      } else {
+        note.textContent = '';
+        note.hidden = true;
+      }
+    }
+  }
+
+  /** Feedback-Upsert mit 300-ms-Debounce je Nachricht: Schnellklicks
+   *  (hoch->runter->hoch) wuerden sonst mehrere POSTs racen, deren
+   *  Reihenfolge der Server nicht kennt. Gesendet wird IMMER der volle
+   *  aktuelle Zustand (vote + kommentar); vote 0 = zurueckgenommen. */
+  private sendFeedback(entry: MessageEntry): void {
+    const prev = this.fbTimers.get(entry);
+    if (prev !== undefined) window.clearTimeout(prev);
+    this.fbTimers.set(entry, window.setTimeout(() => {
+      this.fbTimers.delete(entry);
+      this.postFeedback(entry, false);
+    }, 300));
+  }
+
+  /** POST /api/qs/feedback — fire-and-forget. */
+  private postFeedback(entry: MessageEntry, beacon: boolean): void {
+    if (!entry.qsId) return;
+    if (this.sitzungId === '') this.sitzungId = uuid();
+    this.postQs('feedback', JSON.stringify({
+      sitzung_id: this.sitzungId,
+      message_id: entry.qsId,
+      vote: entry.rating ?? 0,
+      kommentar: entry.comment ?? null,
+      ts: new Date().toISOString(),
+      hp_website: '',
+    }), beacon);
+  }
+
+  /** Nachricht fuer den Transcript-Melder vormerken (Debounce 2 s). Nur fuer
+   *  FERTIGE Nachrichten aufrufen — nie fuer die leere pending-Blase. */
+  private queueQs(entry: MessageEntry): void {
+    if (entry.qsSent || this.qsQueue.includes(entry)) return;
+    this.qsQueue.push(entry);
+    if (this.qsTimer !== null) window.clearTimeout(this.qsTimer);
+    this.qsTimer = window.setTimeout(() => {
+      this.qsTimer = null;
+      this.flushQs(false);
+    }, 2000);
+  }
+
+  /** Queue als Batch(es) an POST /api/qs/transcript melden (max 40/Batch). */
+  private flushQs(beacon: boolean): void {
+    if (this.qsTimer !== null) {
+      window.clearTimeout(this.qsTimer);
+      this.qsTimer = null;
+    }
+    // Zurueckgezogene Eintraege (z. B. per "Erneut versuchen" entfernte
+    // Fehlerblasen) nicht mehr melden.
+    this.qsQueue = this.qsQueue.filter((m) => this.messages.includes(m));
+    while (this.qsQueue.length > 0) {
+      const batch = this.qsQueue.splice(0, 40);
+      if (this.sitzungId === '') this.sitzungId = uuid();
+      const letzte = [...this.messages].reverse().find((m) => m.role === 'assistant');
+      const nachrichten = batch.map((m) => ({
+        message_id: m.qsId ?? uuid(),
+        idx: this.messages.indexOf(m),
+        rolle: m.role === 'user' ? 'user' : 'assistant',
+        art: m.art ?? (m.role === 'user' ? 'frage' : 'antwort'),
+        markdown: m.text,
+        ts_client: new Date(m.ts ?? Date.now()).toISOString(),
+        ...(typeof m.latencyMs === 'number' ? { latenz_ms: m.latencyMs } : {}),
+        // Die aktuell gezeigten Chips gehoeren zur LETZTEN Assistent-Nachricht.
+        ...(m === letzte && this.suggestLabels.length > 0 ? { vorschlaege: this.suggestLabels } : {}),
+      }));
+      const body: Record<string, unknown> = {
+        sitzung_id: this.sitzungId,
+        locale: this.lang || this.langKey,
+        hp_website: '',
+        nachrichten,
+      };
+      const conversationId = lsGet(LS_CONVERSATION_KEY);
+      if (conversationId) body.conversation_id = conversationId;
+      // Optimistisch als gesendet markieren (spart Traffic); schlaegt der
+      // fetch fehl, kommt der Batch fuer den naechsten Flush zurueck.
+      for (const m of batch) m.qsSent = true;
+      this.postQs('transcript', JSON.stringify(body), beacon, () => this.requeueQs(batch));
+    }
+  }
+
+  /** Fehlgeschlagenen Batch fuer den naechsten Flush vormerken (kein eigener
+   *  Retry-Timer — der naechste natuerliche Flush bzw. pagehide nimmt ihn mit). */
+  private requeueQs(batch: MessageEntry[]): void {
+    for (const m of batch) {
+      m.qsSent = false;
+      if (!this.qsQueue.includes(m)) this.qsQueue.push(m);
+    }
+  }
+
+  /** Alles Offene rausschicken (pagehide/disconnect/reset): erst faellige
+   *  Feedback-Debounces, dann die Transcript-Queue. */
+  private flushAllQs(beacon: boolean): void {
+    for (const [entry, timer] of this.fbTimers) {
+      window.clearTimeout(timer);
+      this.postFeedback(entry, beacon);
+    }
+    this.fbTimers.clear();
+    this.flushQs(beacon);
+  }
+
+  /** Transport fuer POST /api/qs/<pfad>: fetch (normal) bzw. sendBeacon
+   *  (pagehide). Der text/plain-Blob beim Beacon ist Absicht — preflight-frei
+   *  cross-origin, der Server parst tolerant. */
+  private postQs(pfad: string, json: string, beacon: boolean, onFail?: () => void): void {
+    const url = `${this.apiBase}/api/qs/${pfad}`;
+    if (beacon && typeof navigator.sendBeacon === 'function') {
+      try {
+        navigator.sendBeacon(url, new Blob([json], { type: 'text/plain' }));
+      } catch {
+        /* best effort beim Verlassen der Seite */
+      }
+      return;
+    }
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: json,
+    })
+      .then((res) => { if (!res.ok) onFail?.(); })
+      .catch(() => onFail?.());
   }
 
   // --- Events ----------------------------------------------------------------
@@ -1990,6 +2445,28 @@ function visibleAnswer(raw: string): string {
     t = t.slice(0, lower.indexOf('<think>'));
   }
   return t.replace(/^[\s\n]+/, '');
+}
+
+/** UUID v4 fuer QS-IDs. crypto.randomUUID braucht einen Secure Context —
+ *  Fallback fuer exotische Einbindungen, damit die QS nie den Chat bricht. */
+function uuid(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {
+    /* weiter zum Fallback */
+  }
+  let out = '';
+  for (let i = 0; i < 36; i++) {
+    if (i === 8 || i === 13 || i === 18 || i === 23) out += '-';
+    else if (i === 14) out += '4';
+    else {
+      const r = Math.floor(Math.random() * 16);
+      out += (i === 19 ? ((r & 3) | 8) : r).toString(16);
+    }
+  }
+  return out;
 }
 
 // sessionStorage kann — wie localStorage — in Privacy-Modi werfen.
