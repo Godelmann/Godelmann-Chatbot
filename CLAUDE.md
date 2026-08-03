@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Godelmann-Chatbot
 
 > **XODER-Prinzip (autark, gilt auch ohne Org-/Meta-Checkout):** Die Betriebs-SSoT dieses Repos liegt
