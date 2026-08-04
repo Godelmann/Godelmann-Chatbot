@@ -613,6 +613,7 @@ const STYLE = /* css */ `
        aufdringlich (User-Entscheid 04.08.); Rot bleibt per
        --gdm-chat-accent jederzeit setzbar. */
     --_accent: var(--gdm-chat-accent, #3F4549);
+    --_accent-hover: var(--gdm-chat-accent-hover, #2E3336);
     --_z: var(--gdm-chat-z-index, 2147483000);
     --_font: var(--gdm-chat-font, inherit);
     /* Breite des Seiten-Drawers (mode="drawer"). Ueberschreibbar; Default 480px. */
@@ -740,7 +741,7 @@ const STYLE = /* css */ `
     border-radius: 6px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px;
   }
   .fb-actions button.fb-send { background: var(--_accent); color: #fff; }
-  .fb-actions button:hover { background: #B33E29; border-color: #B33E29; color: #fff; }
+  .fb-actions button:hover { background: var(--_accent-hover); border-color: var(--_accent-hover); color: #fff; }
 
   .msg.pending::after {
     content: ''; display: inline-block; width: 9px; height: 9px;
@@ -816,6 +817,12 @@ const STYLE = /* css */ `
     width: 100%; max-width: none; height: 100%; max-height: none;
     border-radius: 0; box-shadow: none; animation: none;
   }
+  /* Rahmenlos auf der weissen /chat-Seite (User-Entscheid 04.08.): die graue
+     Nachrichten-Flaeche entfaellt, stattdessen weisser Grund + hellgraue
+     Berater-Blasen (Anthracite 10) — die Seite wirkt nicht mehr als Karte. */
+  .root.mode-page .messages { background: #fff; padding: 20px 4px; }
+  .root.mode-page .msg.assistant { background: #ECEDED; border-color: #ECEDED; }
+  .root.mode-page .inputrow { padding: 12px 4px; }
 `;
 
 const BUBBLE_ICON = `
