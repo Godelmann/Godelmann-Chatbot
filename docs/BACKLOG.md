@@ -1,10 +1,17 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-04 (Paket-Version **0.0.12**, test)
+> Stand: 2026-08-04 (Paket-Version **0.0.13**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.13 (2026-08-04, test)** — **Alle 6 CTAs als Icon + Text in EINER Formensprache:**
+  Kopfzeile „Neue Unterhaltung" (+), „Vollbild" (maximize) / „Verkleinern" (minimize),
+  „Schließen" (x); Feedback-Leiste „Hilfreich" / „Nicht hilfreich" / „Kommentar"
+  (Daumen/Sprechblase als Outline). Icons exakt in der Technik der godelmann.de-Site-Icons
+  (24×24, Stroke, currentColor, round caps; stroke-width 1.5 = optisch 1px bei 15px-Rendering).
+  Text-Glyphen (↗ ↙ ×) und gefuellte Material-Icons entfallen; unter 520px icon-only.
+  EN-Naming konsistent „Chat advisor". ARIA-Labels unveraendert ausfuehrlich; v1-API stabil.
 - **0.0.12 (2026-08-04, test)** — **Seiten-Modus rahmenlos:** auf /chat weisser Grund statt
   grauer Flaeche, Berater-Blasen Anthracite-10 (die Vollseite wirkt nicht mehr als
   eingerahmte Karte; Drawer unveraendert). Letzter Rot-Rest (fb-actions-Hover Red 90) an

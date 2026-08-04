@@ -98,10 +98,16 @@ interface Texts {
   errInvalidMessage: string;
   errGeneric: string;
   retry: string;
+  /** Sichtbare Kurz-Labels der Kopfzeilen-Buttons (ARIA bleibt ausfuehrlich) */
+  fullscreen: string;
+  closeShort: string;
   /** QS-Feedback-Leiste an Assistent-Antworten */
   fbUp: string;
   fbDown: string;
   fbComment: string;
+  fbUpShort: string;
+  fbDownShort: string;
+  fbCommentShort: string;
   fbCancel: string;
   fbYourComment: string;
 }
@@ -140,11 +146,16 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     fbComment: 'Kommentar zu dieser Antwort',
     fbCancel: 'Abbrechen',
     fbYourComment: 'Ihr Kommentar',
+    fullscreen: 'Vollbild',
+    closeShort: 'Schließen',
+    fbUpShort: 'Hilfreich',
+    fbDownShort: 'Nicht hilfreich',
+    fbCommentShort: 'Kommentar',
   },
   en: {
-    bubbleOpen: 'Open Godelmann assistant',
-    bubbleClose: 'Close Godelmann assistant',
-    headerTitle: 'Godelmann Assistant',
+    bubbleOpen: 'Open chat advisor',
+    bubbleClose: 'Close chat advisor',
+    headerTitle: 'Chat advisor',
     greeting:
       'Welcome to GODELMANN. I can advise you on our products, surfaces and ' +
       'ideas for garden, home and commercial projects. To give you targeted ' +
@@ -172,6 +183,11 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     fbComment: 'Comment on this answer',
     fbCancel: 'Cancel',
     fbYourComment: 'Your comment',
+    fullscreen: 'Full view',
+    closeShort: 'Close',
+    fbUpShort: 'Helpful',
+    fbDownShort: 'Not helpful',
+    fbCommentShort: 'Comment',
   },
 };
 
@@ -664,14 +680,15 @@ const STYLE = /* css */ `
   }
   .header .title { font-weight: 700; flex: 1 1 auto; font-size: 16px; }
   .header button {
+    display: inline-flex; align-items: center; gap: 6px;
     background: rgba(255, 255, 255, 0.14); color: #fff; border: none;
     border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px;
-    padding: 5px 9px; white-space: nowrap;
+    padding: 5px 10px; white-space: nowrap; line-height: 1.2;
   }
   .header button:hover { background: rgba(255, 255, 255, 0.28); }
   .header button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-  .header .close { font-size: 16px; line-height: 1; padding: 5px 10px; }
-  .header .punchout, .header .minimize { font-size: 15px; line-height: 1; padding: 5px 9px; }
+  .header button .ico { display: inline-flex; }
+  .header button .ico svg { width: 15px; height: 15px; display: block; }
   .header button[hidden] { display: none; }
 
   .messages {
@@ -714,12 +731,13 @@ const STYLE = /* css */ `
      unter jeder fertigen Assistent-Antwort (Vorbild .msg .retry). --- */
   .fb { display: flex; gap: 4px; margin-top: 8px; }
   .fb button {
-    display: inline-flex; align-items: center; justify-content: center;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
     border: 1px solid #E2E3E3; background: #fff; color: #656A6D;
-    border-radius: 6px; padding: 3px 7px; cursor: pointer; font: inherit;
+    border-radius: 6px; padding: 3px 8px; cursor: pointer; font: inherit;
     line-height: 1;
   }
   .fb button svg { width: 14px; height: 14px; }
+  .fb button .lbl { font-size: 12px; }
   .fb button:hover { border-color: var(--_accent); color: var(--_accent); }
   .fb button.active { background: var(--_accent); border-color: var(--_accent); color: #fff; }
   .fb button:focus-visible { outline: 2px solid var(--_accent); outline-offset: 1px; }
@@ -774,13 +792,14 @@ const STYLE = /* css */ `
   }
   .privacy a { color: var(--_accent); }
 
-  /* Kleines Display: Panel vollflaechig */
+  /* Kleines Display: Panel vollflaechig; Button-Labels weichen den Icons */
   @media (max-width: 520px), (max-height: 560px) {
     .panel {
       inset: 0; width: 100%; max-width: none; height: 100%; max-height: none;
       border-radius: 0;
     }
     .root.pos-right .panel, .root.pos-left .panel { right: 0; left: 0; }
+    .header button .lbl, .fb button .lbl { display: none; }
   }
 
   /* --- Launcher aus (Rail-Einbindung stellt einen eigenen Ausloeser) --- */
@@ -834,21 +853,29 @@ const BUBBLE_ICON = `
     <circle cx="15.4" cy="9.6" r="1.15" class="dot"/>
   </svg>`;
 
-/** Feedback-Icons (Inline-SVG, kein neues Asset): Daumen hoch/runter +
- *  Kommentar. Gefuellt via currentColor — der aktive Zustand invertiert
- *  ueber die CSS-Klasse .active (Accent-Hintergrund, weisses Icon). */
+/** UI-Icons (Inline-SVG, kein neues Asset): dieselbe Formensprache wie die
+ *  godelmann.de-Site-Icons (icon-phone/-mail/-ideengarten) und das
+ *  Kontaktleisten-Icon — 24x24, Stroke, currentColor, round caps.
+ *  stroke-width 1.5 statt 1, weil diese Icons klein (14-16px) gerendert
+ *  werden: 1.5 x 16/24 = 1px — optisch exakt die Strichstaerke der
+ *  24px-Site-Icons. Aktiv-Zustand invertiert via CSS (.active). */
+const ICON_ATTRS =
+  'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+const UI_ICON_PLUS = `
+  <svg ${ICON_ATTRS}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const UI_ICON_MAXIMIZE = `
+  <svg ${ICON_ATTRS}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+const UI_ICON_MINIMIZE = `
+  <svg ${ICON_ATTRS}><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+const UI_ICON_X = `
+  <svg ${ICON_ATTRS}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 const FB_ICON_UP = `
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M2 21h4V9H2v12Zm20-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.58 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2Z"/>
-  </svg>`;
+  <svg ${ICON_ATTRS}><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`;
 const FB_ICON_DOWN = `
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path transform="rotate(180 12 12)" d="M2 21h4V9H2v12Zm20-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 1 6.58 7.59C6.22 7.95 6 8.45 6 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2Z"/>
-  </svg>`;
+  <svg ${ICON_ATTRS}><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`;
 const FB_ICON_COMMENT = `
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2Z"/>
-  </svg>`;
+  <svg ${ICON_ATTRS}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 
 // ---------------------------------------------------------------------------
 // Custom Element
@@ -1254,28 +1281,26 @@ export class GodelmannChatbot extends HTMLElement {
     this.titleEl.className = 'title';
     this.titleEl.id = 'gdm-title';
     this.panel.setAttribute('aria-labelledby', 'gdm-title');
-    this.newBtn = document.createElement('button');
-    this.newBtn.type = 'button';
-    this.newBtn.className = 'new';
+    // Kopfzeilen-Buttons: Icon + sichtbares Kurz-Label (eine Formensprache
+    // mit den Site-Icons; Labels setzt applyTexts sprachreaktiv in .lbl).
+    const kopfBtn = (cls: string, icon: string): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls;
+      b.innerHTML = `<span class="ico" aria-hidden="true">${icon}</span><span class="lbl"></span>`;
+      return b;
+    };
+    this.newBtn = kopfBtn('new', UI_ICON_PLUS);
     this.newBtn.addEventListener('click', () => this.resetConversation());
     // Punchout (nur Drawer): auf die Vollseite wechseln.
-    this.punchoutBtn = document.createElement('button');
-    this.punchoutBtn.type = 'button';
-    this.punchoutBtn.className = 'punchout';
-    this.punchoutBtn.textContent = '↗'; // ↗
+    this.punchoutBtn = kopfBtn('punchout', UI_ICON_MAXIMIZE);
     this.punchoutBtn.hidden = true;
     this.punchoutBtn.addEventListener('click', () => this.punchout());
     // Verkleinern (nur Seite): zurueck in den Drawer der vorigen Seite.
-    this.minimizeBtn = document.createElement('button');
-    this.minimizeBtn.type = 'button';
-    this.minimizeBtn.className = 'minimize';
-    this.minimizeBtn.textContent = '↙'; // ↙
+    this.minimizeBtn = kopfBtn('minimize', UI_ICON_MINIMIZE);
     this.minimizeBtn.hidden = true;
     this.minimizeBtn.addEventListener('click', () => this.minimizeToDrawer());
-    this.closeBtn = document.createElement('button');
-    this.closeBtn.type = 'button';
-    this.closeBtn.className = 'close';
-    this.closeBtn.textContent = '×';
+    this.closeBtn = kopfBtn('close', UI_ICON_X);
     this.closeBtn.addEventListener('click', () => this.close());
     header.append(this.titleEl, this.newBtn, this.punchoutBtn, this.minimizeBtn, this.closeBtn);
 
@@ -1335,7 +1360,14 @@ export class GodelmannChatbot extends HTMLElement {
     const t = this.texts;
     this.bubbleBtn.setAttribute('aria-label', this.isOpen ? t.bubbleClose : t.bubbleOpen);
     this.titleEl.textContent = t.headerTitle;
-    this.newBtn.textContent = t.newConversation;
+    const setLbl = (btn: HTMLButtonElement, text: string): void => {
+      const l = btn.querySelector('.lbl');
+      if (l) l.textContent = text;
+    };
+    setLbl(this.newBtn, t.newConversation);
+    setLbl(this.punchoutBtn, t.fullscreen);
+    setLbl(this.minimizeBtn, t.collapse);
+    setLbl(this.closeBtn, t.closeShort);
     this.punchoutBtn.setAttribute('aria-label', t.expand);
     this.punchoutBtn.setAttribute('title', t.expand);
     this.minimizeBtn.setAttribute('aria-label', t.collapse);
@@ -2183,20 +2215,24 @@ export class GodelmannChatbot extends HTMLElement {
       return;
     }
     const t = this.texts;
-    const mkBtn = (cls: string, label: string, icon: string): HTMLButtonElement => {
+    const mkBtn = (cls: string, label: string, icon: string, visLabel: string): HTMLButtonElement => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = cls;
       b.setAttribute('aria-label', label);
       b.setAttribute('title', label);
       b.innerHTML = icon;
+      const l = document.createElement('span');
+      l.className = 'lbl';
+      l.textContent = visLabel;
+      b.append(l);
       return b;
     };
     const bar = document.createElement('div');
     bar.className = 'fb';
-    const up = mkBtn('fb-up', t.fbUp, FB_ICON_UP);
-    const down = mkBtn('fb-down', t.fbDown, FB_ICON_DOWN);
-    const cmt = mkBtn('fb-comment', t.fbComment, FB_ICON_COMMENT);
+    const up = mkBtn('fb-up', t.fbUp, FB_ICON_UP, t.fbUpShort);
+    const down = mkBtn('fb-down', t.fbDown, FB_ICON_DOWN, t.fbDownShort);
+    const cmt = mkBtn('fb-comment', t.fbComment, FB_ICON_COMMENT, t.fbCommentShort);
     bar.append(up, down, cmt);
 
     // Kommentar-Anzeige unter der Leiste. Befuellung ausschliesslich per

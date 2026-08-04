@@ -1,5 +1,7 @@
 # Einbindung — GODELMANN Chatbot-Widget (`<godelmann-chatbot>`)
 
+> **Optik-Stand 0.0.13 (04.08.2026):** Kopfzeilen-Buttons und Feedback-Leiste zeigen jetzt Icon + Text („Neue Unterhaltung", „Vollbild"/„Verkleinern", „Schließen"; „Hilfreich"/„Nicht hilfreich"/„Kommentar"), Icons in der Formensprache der godelmann.de-Site-Icons; unter 520px wieder icon-only. Akzent-Default Anthrazit. **Snippet, Attribute, Events und CSS-Properties sind unverändert (v1-stabil)** — `--gdm-chat-accent`/`--gdm-chat-accent-hover` erlauben weiterhin eigenes Theming.
+
 > Stand 2026-08-02 · Widget-Version v1 (`chatbot-widget.v1.js`, Fassung 0.0.8) · fuer die godelmann.de-Agentur
 > Ansprechpartner: **Dietmar Scharf** (BLUE ITS / Ramteid GmbH), blueits@ramteid.gmbh
 
