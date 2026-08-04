@@ -1,6 +1,12 @@
 # .xoder/BACKLOG.md — Godelmann-Chatbot (Projekt-Backlog, XODER-verwaltbar)
 
-## Webchat (Stand 01.08., SSoT `Godelmann/.xoder/docs/WEBCHAT.md`)
+## Webchat (Stand 04.08., SSoT `Godelmann/.xoder/docs/WEBCHAT.md`)
+
+- [ ] **Prod-Rollout-Paket Mehrsprachigkeit (NUR gemeinsam, nur mit User-Go):**
+  Widget 0.0.15 + godelmann-chatbot-Server (spass ≥ bc0efa3) + QS-Migration
+  `20260804120000_webchat_mehrsprachigkeit.sql` auf der prod-QS-DB — ohne die
+  Migration lehnt PostgREST Transcript-Batches ab (test-Beleg 04.08.).
+  Reststrecke (MaxMind/Datenschutz/cs-Review/weitere Sprachen): `WEBCHAT.md` 9.
 
 - [ ] **PLZ→Ansprechpartner-Liste fehlt auf prod** — `webchat_contacts` ist dort leer, der
   Fachkunde-Knopf antwortet daher „kein Ansprechpartner hinterlegt". Liste kommt von
@@ -17,11 +23,11 @@
 > [`../docs/BACKLOG.md`](../docs/BACKLOG.md). Diese Datei ist die **XODER-Betriebs-Sicht** — Verweise
 > + offene Betriebs-/Hygiene-Punkte, keine Duplikate.
 
-**Stand:** 2026-07-29 · Paket-Version **v0.0.4** (test LIVE; prod = v0.0.1, Rollout offen).
+**Stand:** 2026-08-04 · Paket-Version **v0.0.15** (test LIVE; prod = v0.0.7, Rollout-Paket s. o.).
 
 ## 1. Aktive Straenge
 
-- **Widget `<godelmann-chatbot>` v0.0.4 — LIVE test (prod = v0.0.1).** Web Component (Vanilla TS, Shadow DOM),
+- **Widget `<godelmann-chatbot>` v0.0.15 — LIVE test (prod = v0.0.7).** Web Component (Vanilla TS, Shadow DOM),
   SSE-Streaming, clientseitiges ALTCHA, sanitized Markdown, A11y. Bundle < 80 kB gzip (Gate).
   Einbettungs-Vertrag: [`../docs/EINBINDUNG.md`](../docs/EINBINDUNG.md). Backend `godelmann-chatbot-server`
   (SPASS :3011, `Ramteid-GmbH/spass` `examples/`) auf beiden Stages live.
@@ -47,7 +53,7 @@
   Ist-Stand = `localStorage` (`gdm-chat-conversation-id`, s. Release-Historie + `EINBINDUNG.md`) →
   ANFORDERUNGEN.md an den umgesetzten Mechanismus angleichen.
 - [ ] **Release-Sync:** `> Stand:`-Kopf in `docs/BACKLOG.md` == aktuelle `package.json`-Version halten
-  (aktuell beide `0.0.1`; vom `/do-everything`-Frontend-Release-Sync-Check erzwungen).
+  (vom `/do-everything`-Frontend-Release-Sync-Check erzwungen; zuletzt 04.08. nachgezogen).
 
 ## 3. Offene Sicherheits-/Audit-Punkte
 
