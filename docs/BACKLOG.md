@@ -1,10 +1,14 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-04 (Paket-Version **0.0.11**, test)
+> Stand: 2026-08-04 (Paket-Version **0.0.12**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.12 (2026-08-04, test)** — **Seiten-Modus rahmenlos:** auf /chat weisser Grund statt
+  grauer Flaeche, Berater-Blasen Anthracite-10 (die Vollseite wirkt nicht mehr als
+  eingerahmte Karte; Drawer unveraendert). Letzter Rot-Rest (fb-actions-Hover Red 90) an
+  neue Variable `--_accent-hover` gehaengt (Default dunkles Anthrazit).
 - **0.0.11 (2026-08-04, test)** — **Drawer entrotet + Namens-Konsistenz:** Akzent-Default
   Anthrazit #3F4549 statt Godelmann-Rot (rotes Drawer-Design zu aufdringlich; Rot bleibt per
   `--gdm-chat-accent` setzbar), Titel + ARIA-Labels konsistent **"Chat-Berater"** (wie das
