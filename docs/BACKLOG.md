@@ -1,10 +1,24 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-04 (Paket-Version **0.0.13**, test)
+> Stand: 2026-08-04 (Paket-Version **0.0.14**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.14 (2026-08-04, test)** — **Mehrsprachigkeit Stufe 1 (Plan „Mehrsprachigkeit +
+  Sprachumschaltung", AP3):** ChatSprache-Typ mit 8er-Set (de/en/fr/it/es/nl/pl/cs),
+  freigeschaltet de/en/**cs** (AKTIVE_SPRACHEN-Flag; fr/it/es/nl/pl folgen nach
+  Uebersetzungs-Review via en-Fallback-Tabellen). Farbige Miniflagge + Kuerzel als
+  4. Element der Feedback-Zeile → Sprachmenue (menuitemradio, Esc/Aussenklick,
+  Fokusrueckgabe); Wechsel stellt die GANZE Oberflaeche um (Texte, Weiche, Chips,
+  Fehlermeldungen) und holt bei bestehendem Verlauf die Server-Zusammenfassung
+  (`language_switch`, Divider-Pille im Verlauf, QS art `sprachwechsel`). Zweisprachige
+  Geo-Begruessung + Sprachwahl-Chips aus `/api/webchat-config.geo` (nur frische Session;
+  `geo:null` = heutiges Verhalten). `lang` additiv im /api/chat-Body; Session persistiert
+  `chatLang` + Sprache je Nachricht; QS-Transcript meldet `sprache`. Tschechische
+  Erstuebersetzung aller UI-Texte + Guided-Selling-Tabellen (`ask`-Anfragen bleiben
+  bewusst deutsch — deutsche Wissensbasis-Embeddings; Review durch tschechische
+  Kollegen offen). Bundle 22,6 kB gzip (Gate < 80 kB).
 - **0.0.13 (2026-08-04, test)** — **Alle 6 CTAs als Icon + Text in EINER Formensprache:**
   Kopfzeile „Neue Unterhaltung" (+), „Vollbild" (maximize) / „Verkleinern" (minimize),
   „Schließen" (x); Feedback-Leiste „Hilfreich" / „Nicht hilfreich" / „Kommentar"

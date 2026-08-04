@@ -42,6 +42,9 @@ interface StoredMessage {
   art?: string;
   rating?: 1 | -1;
   comment?: string;
+  /** Chat-Sprache dieser Nachricht (Mehrsprachigkeit 04.08.) — historisch
+   *  korrekt je Antwort; Alt-Sitzungen ohne Feld laden weiter. */
+  lang?: string;
 }
 
 interface StoredSession {
@@ -53,6 +56,9 @@ interface StoredSession {
   zielgruppeGefragt?: boolean;
   /** QS-Sitzungs-ID fuer /api/qs/* — bleibt ueber Seitenwechsel stabil. */
   sitzungId?: string;
+  /** Explizit gewaehlte Chat-Sprache (Flagge/Geo-Chip) — Vorrang vor dem
+   *  `lang`-Attribut der Website. Fehlt = keine Wahl getroffen. */
+  chatLang?: string;
   draft: string;
   /** Cursor-/Auswahlposition — sonst springt der Cursor ans Ende. */
   cursor?: { start: number; end: number };
@@ -75,7 +81,71 @@ const SCRIPT_ORIGIN: string = (() => {
 })();
 
 // ---------------------------------------------------------------------------
-// Texte (deutsch-first; en-Fallback fuer lang="en")
+// Mehrsprachigkeit (04.08.): 8er-Sprachset des Chat-Beraters — strikt getrennt
+// von der Website-Sprache (`lang`-Attribut = Einstiegssprache). Freigeschaltet
+// sind zunaechst de/en/cs (AKTIVE_SPRACHEN); die uebrigen fuenf sind im
+// Server-Vertrag fertig und folgen nach dem Uebersetzungs-Review (AP5).
+// ---------------------------------------------------------------------------
+
+type ChatSprache = 'de' | 'en' | 'fr' | 'it' | 'es' | 'nl' | 'pl' | 'cs';
+const CHAT_SPRACHEN: readonly ChatSprache[] = ['de', 'en', 'fr', 'it', 'es', 'nl', 'pl', 'cs'];
+/** Feature-Flag je Sprache: nur reviewte Sprachen erscheinen im Menue und als
+ *  Geo-Vorschlag. Neue Sprache freischalten = hier ergaenzen (Tabellen zuerst). */
+const AKTIVE_SPRACHEN: readonly ChatSprache[] = ['de', 'en', 'cs'];
+
+function istChatSprache(s: string): s is ChatSprache {
+  return (CHAT_SPRACHEN as readonly string[]).includes(s);
+}
+
+/** Eigennamen fuer Menue + Divider (jede Sprache benennt sich selbst). */
+const SPRACH_NAMEN: Record<ChatSprache, string> = {
+  de: 'Deutsch', en: 'English', fr: 'Français', it: 'Italiano',
+  es: 'Español', nl: 'Nederlands', pl: 'Polski', cs: 'Čeština',
+};
+
+/** Anzeige-Kuerzel neben der Flagge (Laendercode-Konvention: cs -> CZ,
+ *  wie der Gravelli-Umschalter — Sabrina 31.07.). */
+const SPRACH_KUERZEL: Record<ChatSprache, string> = {
+  de: 'DE', en: 'EN', fr: 'FR', it: 'IT', es: 'ES', nl: 'NL', pl: 'PL', cs: 'CZ',
+};
+
+/** Sprachwahl-Chips der zweisprachigen Geo-Begruessung — jeder Chip in
+ *  SEINER Sprache (der Besucher soll seinen sofort verstehen). */
+const WEITER_IN: Record<ChatSprache, string> = {
+  de: 'Weiter auf Deutsch',
+  en: 'Continue in English',
+  fr: 'Continuer en français',
+  it: 'Continuare in italiano',
+  es: 'Continuar en español',
+  nl: 'Verdergaan in het Nederlands',
+  pl: 'Kontynuować po polsku',
+  cs: 'Pokračovat česky',
+};
+
+/** Vereinfachte Inline-Miniflaggen (3:2, reine Streifen-Geometrie — kein
+ *  Emoji: Windows rendert Flaggen-Emoji als Buchstaben; kein Wappen-Detail
+ *  wegen Bundle-Gate). Godelmann zeigt sie farbig. */
+const FLAGGEN: Record<ChatSprache, string> = {
+  de: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#000"/><rect y=".667" width="3" height=".667" fill="#D00"/><rect y="1.333" width="3" height=".667" fill="#FFCE00"/></svg>',
+  en: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#012169"/><path d="M0 0l3 2M3 0L0 2" stroke="#fff" stroke-width=".45"/><path d="M0 0l3 2M3 0L0 2" stroke="#C8102E" stroke-width=".25"/><path d="M1.5 0v2M0 1h3" stroke="#fff" stroke-width=".65"/><path d="M1.5 0v2M0 1h3" stroke="#C8102E" stroke-width=".38"/></svg>',
+  fr: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="1" height="2" fill="#002395"/><rect x="2" width="1" height="2" fill="#ED2939"/></svg>',
+  it: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="1" height="2" fill="#009246"/><rect x="2" width="1" height="2" fill="#CE2B37"/></svg>',
+  es: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#AA151B"/><rect y=".5" width="3" height="1" fill="#F1BF00"/></svg>',
+  nl: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="3" height=".667" fill="#AE1C28"/><rect y="1.333" width="3" height=".667" fill="#21468B"/></svg>',
+  pl: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect y="1" width="3" height="1" fill="#DC143C"/></svg>',
+  cs: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect y="1" width="3" height="1" fill="#D7141A"/><path d="M0 0l1.5 1L0 2z" fill="#11457E"/></svg>',
+};
+
+/** Sprachtabellen-Typ: de + en Pflicht (bestehende Basis), weitere Sprachen
+ *  optional — `tabelle()` faellt fuer noch nicht uebersetzte auf en zurueck. */
+type SprachTabelle<T> = Partial<Record<ChatSprache, T>> & Record<'de' | 'en', T>;
+
+function tabelle<T>(rec: SprachTabelle<T>, lang: ChatSprache): T {
+  return rec[lang] ?? (lang === 'de' ? rec.de : rec.en);
+}
+
+// ---------------------------------------------------------------------------
+// Texte (deutsch-first; en-Fallback fuer noch nicht uebersetzte Sprachen)
 // ---------------------------------------------------------------------------
 
 interface Texts {
@@ -110,9 +180,20 @@ interface Texts {
   fbCommentShort: string;
   fbCancel: string;
   fbYourComment: string;
+  /** Sprachumschaltung (Flagge in der Feedback-Zeile + Menue) */
+  langMenu: string;
+  /** Kuratierte Link-Antwort („Gerne — hier entlang: …") */
+  hereYouGo: string;
+  /** Ansprechpartner-Suche (PLZ -> /api/contact) */
+  contactLooking: string;
+  contactHeading: string;
+  contactRegion: string;
+  contactPhone: string;
+  contactNone: string;
+  contactUnavailable: string;
 }
 
-const TEXTS: Record<'de' | 'en', Texts> = {
+const TEXTS: SprachTabelle<Texts> = {
   de: {
     bubbleOpen: 'Chat-Berater oeffnen',
     bubbleClose: 'Chat-Berater schliessen',
@@ -151,6 +232,19 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     fbUpShort: 'Hilfreich',
     fbDownShort: 'Nicht hilfreich',
     fbCommentShort: 'Kommentar',
+    langMenu: 'Antwortsprache wählen',
+    hereYouGo: 'Gerne — hier entlang',
+    contactLooking: 'Einen Moment, ich suche Ihren Ansprechpartner …',
+    contactHeading: 'Ihr zuständiger Ansprechpartner',
+    contactRegion: 'Region',
+    contactPhone: 'Telefon',
+    contactNone:
+      'Zu dieser Postleitzahl habe ich aktuell keinen direkten Ansprechpartner ' +
+      'hinterlegt. Die GODELMANN-Beratung hilft Ihnen gerne weiter — oder ' +
+      'stellen Sie mir Ihre fachliche Frage direkt hier.',
+    contactUnavailable:
+      'Die Ansprechpartner-Suche ist gerade nicht erreichbar. Bitte versuchen ' +
+      'Sie es später erneut.',
   },
   en: {
     bubbleOpen: 'Open chat advisor',
@@ -188,6 +282,65 @@ const TEXTS: Record<'de' | 'en', Texts> = {
     fbUpShort: 'Helpful',
     fbDownShort: 'Not helpful',
     fbCommentShort: 'Comment',
+    langMenu: 'Choose reply language',
+    hereYouGo: 'Here you go',
+    contactLooking: 'One moment, looking up your contact …',
+    contactHeading: 'Your responsible contact',
+    contactRegion: 'Region',
+    contactPhone: 'Phone',
+    contactNone:
+      'I do not have a direct contact for this postal code yet. The GODELMANN ' +
+      'advisory will be happy to help — or just ask me your technical question here.',
+    contactUnavailable: 'The contact lookup is currently unavailable. Please try again later.',
+  },
+  // Tschechisch (Erstuebersetzung 04.08. — Korrekturlesen durch tschechische
+  // Kollegen offen, gleiche Review-Spur wie die Gravelli-i18n Phase 1).
+  cs: {
+    bubbleOpen: 'Otevřít chat s poradcem',
+    bubbleClose: 'Zavřít chat s poradcem',
+    headerTitle: 'Chatový poradce',
+    greeting:
+      'Vítejte u společnosti GODELMANN. Poradím vám s našimi produkty, ' +
+      'plochami a nápady pro zahradu, dům i komerční projekty. Abych vám mohl ' +
+      'poradit cíleně: jste odborný zákazník, nebo soukromý zákazník? Vyberte ' +
+      'jednoduše níže — nebo mi rovnou napište svou otázku.',
+    inputPlaceholder: 'Vaše otázka …',
+    send: 'Odeslat',
+    newConversation: 'Nová konverzace',
+    privacy: 'Anonymní chat — nezadávejte prosím žádné osobní údaje.',
+    privacyLink: 'Ochrana osobních údajů',
+    close: 'Zavřít chat',
+    expand: 'Otevřít jako samostatnou stránku',
+    collapse: 'Zmenšit',
+    errRateLimit:
+      'Právě přišlo příliš mnoho dotazů. Zkuste to prosím za několik minut ' +
+      'znovu (nejvýše 10 zpráv za 10 minut).',
+    errCaptcha: 'Bezpečnostní kontrola se nezdařila. Odešlete prosím zprávu znovu.',
+    errNetwork: 'Připojení se nezdařilo. Zkontrolujte prosím své internetové připojení.',
+    errTimeout: 'Odpověď trvala příliš dlouho. Zkuste to prosím znovu.',
+    errInvalidMessage: 'Zpráva je prázdná nebo příliš dlouhá (nejvýše 2000 znaků).',
+    errGeneric: 'Došlo k chybě. Zkuste to prosím znovu.',
+    retry: 'Zkusit znovu',
+    fbUp: 'Odpověď byla užitečná',
+    fbDown: 'Odpověď nebyla užitečná',
+    fbComment: 'Komentář k této odpovědi',
+    fbCancel: 'Zrušit',
+    fbYourComment: 'Váš komentář',
+    fullscreen: 'Celá obrazovka',
+    closeShort: 'Zavřít',
+    fbUpShort: 'Užitečné',
+    fbDownShort: 'Neužitečné',
+    fbCommentShort: 'Komentář',
+    langMenu: 'Zvolit jazyk odpovědí',
+    hereYouGo: 'Tudy prosím',
+    contactLooking: 'Okamžik, hledám vašeho kontaktního partnera …',
+    contactHeading: 'Váš odpovědný kontaktní partner',
+    contactRegion: 'Region',
+    contactPhone: 'Telefon',
+    contactNone:
+      'K tomuto PSČ zatím nemám přímého kontaktního partnera. Poradenství ' +
+      'GODELMANN vám rádo pomůže — nebo mi svou odbornou otázku položte přímo zde.',
+    contactUnavailable: 'Vyhledávání kontaktů není momentálně dostupné. Zkuste to prosím později.',
   },
 };
 
@@ -205,7 +358,7 @@ type Branch = 'endkunde' | 'fachkunde';
 // Verlauf erscheint (das Label bleibt der kurze Chip-Text).
 interface QuickAction { label: string; frage: string; ask?: string; special?: 'plz'; linkKey?: string }
 
-const BRANCH_INTRO: Record<'de' | 'en', Record<Branch, string>> = {
+const BRANCH_INTRO: SprachTabelle<Record<Branch, string>> = {
   de: {
     endkunde:
       'Schön, dass Sie da sind. Ich zeige Ihnen gerne unsere Produkte für ' +
@@ -235,9 +388,23 @@ const BRANCH_INTRO: Record<'de' | 'en', Record<Branch, string>> = {
       'and BIM/CAD data, reference projects or finding your local contact ' +
       'person. Pick a topic below — or simply type your question.',
   },
+  cs: {
+    endkunde:
+      'Jsme rádi, že jste tady. Rád vám ukážu naše produkty pro zahradu, ' +
+      'terasu a příjezdovou cestu, inspiraci a nápady na design, aktuální ' +
+      'zahradní knihu, naše novinky nebo vzorovou zahradu ve vašem okolí — a ' +
+      'pomohu vám s porovnáním produktů, hledáním prodejce nebo kontaktem na ' +
+      'servisní linku. Vyberte níže téma — nebo mi prostě napište svou otázku.',
+    fachkunde:
+      'Vítejte v sekci pro odborné zákazníky. Rád vás podpořím u produktů a ' +
+      'témat pro projektování objektů, v mediatéce s texty výběrových řízení, ' +
+      'technickými listy a BIM/CAD daty, s referenčními projekty, při ' +
+      'porovnání produktů nebo při hledání vašeho kontaktního partnera v ' +
+      'regionu. Vyberte níže téma — nebo mi prostě napište svou otázku.',
+  },
 };
 
-const BRANCH_ACTIONS: Record<'de' | 'en', Record<Branch, QuickAction[]>> = {
+const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
   de: {
     endkunde: [
       {
@@ -388,27 +555,118 @@ const BRANCH_ACTIONS: Record<'de' | 'en', Record<Branch, QuickAction[]>> = {
       },
     ],
   },
+  // cs: `label` + `frage` sichtbar tschechisch; `ask` (die geerdete Anfrage an
+  // die Wissensbasis) bleibt bewusst DEUTSCH — die knowledge_search-Embeddings
+  // sind deutsch, deutsche Anfragen treffen besser. Die Antwortsprache steuert
+  // die serverseitige Per-Turn-Direktive (lang=cs).
+  cs: {
+    endkunde: [
+      {
+        label: 'Objevit produkty',
+        frage: 'Jaké produkty nabízíte?',
+        ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?',
+      },
+      {
+        label: 'Inspirace pro zahradu a terasu',
+        frage: 'Kde najdu inspiraci pro zahradu a terasu?',
+        linkKey: 'inspirationen',
+        ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.',
+      },
+      {
+        label: 'Zahradní kniha',
+        frage: 'Kde najdu aktuální zahradní knihu?',
+        linkKey: 'gartenbuch',
+        ask: 'Wo finde ich das aktuelle Godelmann-Gartenbuch zum Herunterladen?',
+      },
+      {
+        label: 'Novinky',
+        frage: 'Co je nového u GODELMANN?',
+        linkKey: 'neuheiten',
+        ask: 'Was sind die aktuellen Neuheiten von Godelmann?',
+      },
+      {
+        label: 'Navštívit vzorovou zahradu',
+        frage: 'Kde mohu navštívit vzorovou zahradu?',
+        linkKey: 'ideengarten',
+        ask: 'Wo gibt es einen Godelmann-Ideengarten, den ich besuchen kann?',
+      },
+      {
+        label: 'Porovnat produkty',
+        frage: 'Můžete pro mě porovnat dva produkty?',
+        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+      },
+      {
+        label: 'Hledání prodejce',
+        frage: 'Jak najdu prodejce ve svém okolí?',
+        linkKey: 'haendlersuche',
+        ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?',
+      },
+      {
+        label: 'Servisní linka',
+        frage: 'Jak se dovolám na servisní linku?',
+        ask: 'Wie erreiche ich die GODELMANN-Beratung bzw. Service-Hotline?',
+      },
+    ],
+    fachkunde: [
+      {
+        label: 'Produkty',
+        frage: 'Jaké produkty jsou k dispozici pro projektování objektů?',
+        ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?',
+      },
+      {
+        label: 'Témata projektování objektů',
+        frage: 'Jaká témata a řešení existují pro projektování objektů?',
+        linkKey: 'objektplanung',
+        ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?',
+      },
+      {
+        label: 'Mediatéka (podklady, výběrová řízení, BIM/CAD)',
+        frage: 'Kde najdu texty výběrových řízení, technické listy a BIM/CAD data?',
+        linkKey: 'mediathek',
+        ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?',
+      },
+      {
+        label: 'Reference',
+        frage: 'Jaké referenční projekty existují?',
+        linkKey: 'referenzen',
+        ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.',
+      },
+      {
+        label: 'Porovnat produkty',
+        frage: 'Můžete pro mě porovnat dva produkty?',
+        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+      },
+      {
+        label: 'Najít kontaktní osobu',
+        frage: 'Kdo je můj kontaktní partner v regionu?',
+        special: 'plz',
+      },
+    ],
+  },
 };
 
-const WEICHE_LABELS: Record<'de' | 'en', { fach: string; end: string }> = {
+const WEICHE_LABELS: SprachTabelle<{ fach: string; end: string }> = {
   de: { fach: 'Fachkunde', end: 'Endkunde' },
   en: { fach: 'Trade professional', end: 'Private customer' },
+  cs: { fach: 'Odborný zákazník', end: 'Soukromý zákazník' },
 };
 
 /** Nutzer-Echo beim Klick auf die Zielgruppen-Weiche (wie eine getippte Antwort). */
-const BIN_LABELS: Record<'de' | 'en', Record<Branch, string>> = {
+const BIN_LABELS: SprachTabelle<Record<Branch, string>> = {
   de: { fachkunde: 'Ich bin Fachkunde', endkunde: 'Ich bin Endkunde' },
   en: { fachkunde: 'I am a trade professional', endkunde: 'I am a private customer' },
+  cs: { fachkunde: 'Jsem odborný zákazník', endkunde: 'Jsem soukromý zákazník' },
 };
 
-const PLZ_PROMPT: Record<'de' | 'en', string> = {
+const PLZ_PROMPT: SprachTabelle<string> = {
   de: 'Bitte geben Sie Ihre Postleitzahl ein, dann nenne ich Ihnen Ihren zustaendigen Ansprechpartner.',
   en: 'Please enter your postal code and I will name your responsible contact person.',
+  cs: 'Zadejte prosím své PSČ a já vám sdělím vašeho odpovědného kontaktního partnera.',
 };
 
 /** Slot-Filling: einmalige Nachfrage, wenn die Zielgruppe nach der ersten
  *  Freitext-Antwort noch unklar ist (stage bleibt 'greeting'). */
-const ZIELGRUPPEN_NACHFRAGE: Record<'de' | 'en', string> = {
+const ZIELGRUPPEN_NACHFRAGE: SprachTabelle<string> = {
   de:
     'Übrigens: Damit ich Sie noch gezielter beraten kann — sind Sie Fachkunde ' +
     '(etwa Architektur, Planung oder GaLaBau) oder Endkunde? Wählen Sie unten ' +
@@ -417,6 +675,10 @@ const ZIELGRUPPEN_NACHFRAGE: Record<'de' | 'en', string> = {
     'By the way: to give you even more targeted advice — are you a trade ' +
     'professional (e.g. architecture, planning or landscaping) or a private ' +
     'customer? Choose below or simply keep asking.',
+  cs:
+    'Mimochodem: abych vám mohl poradit ještě cíleněji — jste odborný zákazník ' +
+    '(např. architektura, projektování nebo zahradní a krajinné stavby), nebo ' +
+    'soukromý zákazník? Vyberte níže, nebo se prostě ptejte dál.',
 };
 
 // Heikes Stichwortlisten fuer die automatische Zielgruppen-Erkennung bei Freitext.
@@ -761,6 +1023,35 @@ const STYLE = /* css */ `
   .fb-actions button.fb-send { background: var(--_accent); color: #fff; }
   .fb-actions button:hover { background: var(--_accent-hover); border-color: var(--_accent-hover); color: #fff; }
 
+  /* --- Mehrsprachigkeit: Flaggen-Knopf (4. Element der Feedback-Zeile),
+     Sprachmenue (in der Blase verankert) + Wechsel-Divider. Flaggen farbig
+     (Godelmann); Gravelli nutzt dasselbe Muster ausgegraut. --- */
+  .msg.assistant { position: relative; }
+  .fb .fb-lang .flag { display: inline-flex; line-height: 0; }
+  .fb .fb-lang .flag svg { width: 18px; height: 12px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .langmenu {
+    position: absolute; bottom: 34px; right: 8px; z-index: 5;
+    display: flex; flex-direction: column; min-width: 150px;
+    background: #fff; border: 1px solid #E2E3E3; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); padding: 4px; gap: 2px;
+  }
+  .langmenu .langitem {
+    display: flex; align-items: center; gap: 8px;
+    border: none; background: none; color: #3F4549; border-radius: 6px;
+    padding: 6px 8px; cursor: pointer; font: inherit; font-size: 13px; text-align: left;
+  }
+  .langmenu .langitem .flag { display: inline-flex; line-height: 0; }
+  .langmenu .langitem .flag svg { width: 18px; height: 12px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  .langmenu .langitem:hover { background: #ECEDED; }
+  .langmenu .langitem[aria-checked="true"] { font-weight: 700; }
+  .langmenu .langitem:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
+  .langdivider {
+    align-self: center; margin: 2px 0; padding: 3px 12px;
+    border: 1px solid #E2E3E3; border-radius: 999px; background: #fff;
+    color: #656A6D; font-size: 12px; line-height: 1.4;
+  }
+  .root.mode-page .langdivider { background: #ECEDED; border-color: #ECEDED; }
+
   .msg.pending::after {
     content: ''; display: inline-block; width: 9px; height: 9px;
     margin-left: 6px; border-radius: 50%; background: var(--_accent);
@@ -900,6 +1191,8 @@ interface MessageEntry {
   rating?: 1 | -1;
   /** QS-Feedback: Freitext-Kommentar des Besuchers. */
   comment?: string;
+  /** Chat-Sprache zum Zeitpunkt dieser Nachricht (historisch je Antwort). */
+  lang?: string;
   /** Nur Laufzeit (bewusst NICHT serialisiert): schon an /api/qs/transcript
    *  gemeldet? Nach restoreSession wieder false — Nachsenden ist idempotent
    *  (Server dedupliziert je (sitzung_id, message_id)) = self-healing. */
@@ -990,6 +1283,16 @@ export class GodelmannChatbot extends HTMLElement {
   private suggestLabels: string[] = [];
   /** pagehide-Flush (sendBeacon) — Referenz zum sauberen Abmelden. */
   private pagehideHandler: (() => void) | null = null;
+  /** Explizit gewaehlte Chat-Sprache (Flagge/Geo-Chip); null = Website-Sprache. */
+  private chatLang: ChatSprache | null = null;
+  /** GeoIP-Sprachvorschlaege aus /api/webchat-config (bereits auf
+   *  AKTIVE_SPRACHEN gefiltert; leer = kein Vorschlag/keine DB). */
+  private geoLangs: ChatSprache[] = [];
+  /** Offenes Sprachmenue (es existiert hoechstens EINES) + sein Ausloeser. */
+  private langMenuEl: HTMLDivElement | null = null;
+  private langMenuAnchor: HTMLButtonElement | null = null;
+  /** Outside-Click-Schliesser des Sprachmenues (Referenz zum Abmelden). */
+  private langMenuOutside: ((e: Event) => void) | null = null;
 
   constructor() {
     super();
@@ -998,12 +1301,20 @@ export class GodelmannChatbot extends HTMLElement {
 
   // --- Attribute / Konfiguration -----------------------------------------
 
-  private get langKey(): 'de' | 'en' {
-    return (this.getAttribute('lang') ?? 'de').toLowerCase().startsWith('en') ? 'en' : 'de';
+  /** Einstiegssprache aus dem `lang`-Attribut der Website (cz -> cs). */
+  private get attrLang(): ChatSprache {
+    const raw = (this.getAttribute('lang') ?? 'de').toLowerCase();
+    const norm = raw === 'cz' ? 'cs' : raw.slice(0, 2);
+    return istChatSprache(norm) && (AKTIVE_SPRACHEN as readonly string[]).includes(norm) ? norm : 'de';
+  }
+
+  /** Wirksame Chat-Sprache: explizite Wahl > Website-Einstiegssprache. */
+  private get langKey(): ChatSprache {
+    return this.chatLang ?? this.attrLang;
   }
 
   private get texts(): Texts {
-    return TEXTS[this.langKey];
+    return tabelle(TEXTS, this.langKey);
   }
 
   private get apiBase(): string {
@@ -1070,6 +1381,8 @@ export class GodelmannChatbot extends HTMLElement {
    *  die Rail-Verdrahtung. Ohne diese Reinigung bliebe z. B. der margin-right
    *  am <html> haengen, wenn das Element zur Laufzeit ersetzt wird. */
   disconnectedCallback(): void {
+    // Offenes Sprachmenue schliessen (raeumt auch den document-Listener).
+    this.closeLangMenu(false);
     this.abortCtrl?.abort();
     if (this.curatedTimer !== null) {
       window.clearTimeout(this.curatedTimer);
@@ -1120,11 +1433,13 @@ export class GodelmannChatbot extends HTMLElement {
         ...(m.art ? { art: m.art } : {}),
         ...(m.rating ? { rating: m.rating } : {}),
         ...(m.comment ? { comment: m.comment } : {}),
+        ...(m.lang ? { lang: m.lang } : {}),
       })),
       stage: this.stage,
       awaitingPlz: this.awaitingPlz,
       ...(this.zielgruppeGefragt ? { zielgruppeGefragt: true } : {}),
       ...(this.sitzungId ? { sitzungId: this.sitzungId } : {}),
+      ...(this.chatLang ? { chatLang: this.chatLang } : {}),
       draft: el?.value ?? '',
       ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
       ...(this.inputFocused ? { focused: true } : {}),
@@ -1157,6 +1472,13 @@ export class GodelmannChatbot extends HTMLElement {
     // frische (der Verlauf wird unten ohnehin einmal nachgesendet).
     if (typeof s.sitzungId === 'string' && s.sitzungId !== '') this.sitzungId = s.sitzungId;
     else if (this.sitzungId === '') this.sitzungId = uuid();
+    // Explizite Sprachwahl VOR dem Verlaufsaufbau zurueckholen (Whitelist!):
+    // die sprachreaktiven Teile (Begruessung, Chips) bauen sonst falsch auf.
+    if (typeof s.chatLang === 'string' && istChatSprache(s.chatLang)
+        && (AKTIVE_SPRACHEN as readonly string[]).includes(s.chatLang)) {
+      this.chatLang = s.chatLang;
+      this.applyTexts();
+    }
 
     this.restoring = true;
     try {
@@ -1172,6 +1494,7 @@ export class GodelmannChatbot extends HTMLElement {
           ...(typeof m.art === 'string' && m.art !== '' ? { art: m.art } : {}),
           ...(m.rating === 1 || m.rating === -1 ? { rating: m.rating } : {}),
           ...(typeof m.comment === 'string' && m.comment !== '' ? { comment: m.comment } : {}),
+          ...(typeof m.lang === 'string' && istChatSprache(m.lang) ? { lang: m.lang } : {}),
         };
         if (m.role === 'error') {
           // ueber appendErrorMessage, damit der "Erneut versuchen"-Knopf mitkommt
@@ -1379,10 +1702,10 @@ export class GodelmannChatbot extends HTMLElement {
     this.privacyEl.innerHTML =
       `${escapeHtml(t.privacy)} <a href="${PRIVACY_URL}" target="_blank" ` +
       `rel="noopener noreferrer">${escapeHtml(t.privacyLink)}</a>`;
-    // Greeting-Nachrichten sprachreaktiv halten
+    // Greeting-Nachrichten sprachreaktiv halten (inkl. Geo-Zweisprachigkeit)
     for (const m of this.messages) {
       if (m.isGreeting) {
-        m.text = this.greetingText;
+        m.text = this.greetingBubbleText();
         if (m.el) {
           m.el.innerHTML = renderMarkdown(m.text);
           // innerHTML hat eine vorhandene Feedback-Leiste mit entfernt ->
@@ -1647,6 +1970,23 @@ export class GodelmannChatbot extends HTMLElement {
     if (!entry.qsId) entry.qsId = uuid();
     if (!entry.ts) entry.ts = Date.now();
     if (!entry.art) entry.art = entry.role === 'error' ? 'fehler' : entry.role === 'user' ? 'frage' : 'antwort';
+    // Chat-Sprache je Nachricht (historisch korrekt; restoreSession liefert
+    // gespeicherte Werte mit, neue Nachrichten tragen die aktuelle Sprache).
+    if (!entry.lang) entry.lang = this.langKey;
+    // Sprachwechsel-Divider: zentrierte Meta-Pille statt Chat-Blase — sie
+    // gehoert trotzdem in den Verlauf (Persistenz + QS-Transcript).
+    if (entry.art === 'sprachwechsel') {
+      const div = document.createElement('div');
+      div.className = 'langdivider';
+      div.textContent = entry.text;
+      entry.el = div as HTMLDivElement;
+      this.messages.push(entry);
+      this.messagesEl.appendChild(div);
+      this.scrollToEnd();
+      this.saveSession();
+      this.queueQs(entry);
+      return entry;
+    }
     const el = document.createElement('div');
     el.className = `msg ${entry.role}`;
     el.innerHTML = renderMarkdown(entry.text);
@@ -1686,8 +2026,9 @@ export class GodelmannChatbot extends HTMLElement {
     this.curatedTimer = window.setTimeout(() => {
       this.curatedTimer = null;
       // Begruessung zur Ausspielzeit aufloesen: falls `lang`/`greeting`
-      // waehrend der Denkzeit wechselte, gewinnt der aktuelle Text.
-      pending.text = pending.isGreeting ? this.greetingText : entry.text;
+      // waehrend der Denkzeit wechselte, gewinnt der aktuelle Text — und die
+      // Geo-Antwort (loadConfig) macht sie ggf. zweisprachig.
+      pending.text = pending.isGreeting ? this.greetingBubbleText() : entry.text;
       // QS: die simulierte Denkzeit ist die Latenz der kuratierten Antwort.
       pending.latencyMs = Date.now() - (pending.ts ?? Date.now());
       if (pending.el) {
@@ -1747,14 +2088,23 @@ export class GodelmannChatbot extends HTMLElement {
       items.push({ label: frage, onClick: () => { void this.startChat(frage); } });
     }
     if (this.stage === 'greeting') {
+      // Zweisprachige Geo-Sprachwahl (nur ganz frische Session): ZUERST die
+      // Sprach-Chips — jeder in seiner Sprache. Die Zielgruppen-Weiche folgt,
+      // sobald der Besucher gewaehlt hat (oder einfach drauflos schreibt).
+      for (const sprache of this.geoAuswahl()) {
+        const label = WEITER_IN[sprache];
+        if (seen.has(label)) continue;
+        seen.add(label);
+        items.push({ label, onClick: () => this.chooseGeoLanguage(sprache) });
+      }
       // Zielgruppen-Chips IMMER anhaengen (Schritt 1 bzw. Slot-Filling).
-      const l = WEICHE_LABELS[this.langKey];
+      const l = tabelle(WEICHE_LABELS, this.langKey);
       if (!seen.has(l.fach)) items.push({ label: l.fach, onClick: () => this.chooseBranch('fachkunde') });
       if (!seen.has(l.end)) items.push({ label: l.end, onClick: () => this.chooseBranch('endkunde') });
     } else {
       // Ohne Followups das volle Menue (wie bisher), sonst auf 6 auffuellen.
       const max = followups.length > 0 ? 6 : Number.POSITIVE_INFINITY;
-      for (const a of BRANCH_ACTIONS[this.langKey][this.stage]) {
+      for (const a of tabelle(BRANCH_ACTIONS, this.langKey)[this.stage]) {
         if (items.length >= max) break;
         if (seen.has(a.label)) continue;
         seen.add(a.label);
@@ -1774,9 +2124,9 @@ export class GodelmannChatbot extends HTMLElement {
     if (this.busy) return;
     this.clearSuggestions();
     this.stage = branch;
-    this.appendMessage({ role: 'user', text: BIN_LABELS[this.langKey][branch], art: 'zielgruppe' });
+    this.appendMessage({ role: 'user', text: tabelle(BIN_LABELS, this.langKey)[branch], art: 'zielgruppe' });
     this.appendCuratedMessage(
-      { role: 'assistant', text: BRANCH_INTRO[this.langKey][branch] },
+      { role: 'assistant', text: tabelle(BRANCH_INTRO, this.langKey)[branch] },
       () => this.showSuggestions([]),
     );
   }
@@ -1789,7 +2139,7 @@ export class GodelmannChatbot extends HTMLElement {
       // awaitingPlz erst NACH der Denkzeit setzen: bricht ein Neuladen die
       // pending-Aufforderung ab, erwartet die Sitzung dann auch keine PLZ.
       this.appendMessage({ role: 'user', text: a.frage });
-      this.appendCuratedMessage({ role: 'assistant', text: PLZ_PROMPT[this.langKey] }, () => {
+      this.appendCuratedMessage({ role: 'assistant', text: tabelle(PLZ_PROMPT, this.langKey) }, () => {
         this.awaitingPlz = true;
         this.saveSession();
         this.input.focus();
@@ -1800,7 +2150,7 @@ export class GodelmannChatbot extends HTMLElement {
     const url = a.linkKey ? this.links[a.linkKey] : undefined;
     if (url) {
       this.appendMessage({ role: 'user', text: a.frage });
-      const lead = this.langKey === 'en' ? 'Here you go' : 'Gerne — hier entlang';
+      const lead = this.texts.hereYouGo;
       this.appendCuratedMessage(
         { role: 'assistant', text: `${lead}: [${a.label}](${url})` },
         () => this.showSuggestions([]),
@@ -1817,10 +2167,20 @@ export class GodelmannChatbot extends HTMLElement {
     try {
       const res = await fetch(`${this.apiBase}/api/webchat-config`);
       if (!res.ok) return;
-      const data = (await res.json()) as { links?: { link_key?: string; url?: string }[] };
+      const data = (await res.json()) as {
+        links?: { link_key?: string; url?: string }[];
+        geo?: { country?: string; langs?: string[] } | null;
+      };
       for (const l of data.links ?? []) {
         if (l.link_key && l.url) this.links[l.link_key] = l.url;
       }
+      // GeoIP-Sprachvorschlag (additiv; `geo: null` ohne MaxMind-DB =
+      // heutiges Verhalten). Nur freigeschaltete Sprachen zaehlen.
+      const roh = data.geo?.langs ?? [];
+      this.geoLangs = roh
+        .filter(istChatSprache)
+        .filter((l) => (AKTIVE_SPRACHEN as readonly string[]).includes(l));
+      if (this.geoLangs.length > 0) this.refreshGeoGreeting();
     } catch {
       /* Config optional — Buttons fallen auf die geerdete AI-Frage zurueck. */
     }
@@ -1829,10 +2189,10 @@ export class GodelmannChatbot extends HTMLElement {
   /** Fachkunde-PLZ -> Ansprechpartner (GET /api/contact), deterministisch. */
   private async lookupContact(plz: string): Promise<void> {
     const clean = plz.replace(/\D/g, '').slice(0, 5);
-    const de = this.langKey !== 'en';
+    const t = this.texts;
     const pending = this.appendMessage({
       role: 'assistant',
-      text: de ? 'Einen Moment, ich suche Ihren Ansprechpartner …' : 'One moment, looking up your contact …',
+      text: t.contactLooking,
       art: 'kuratiert',
     });
     try {
@@ -1841,19 +2201,15 @@ export class GodelmannChatbot extends HTMLElement {
       const c = (data.contacts ?? [])[0];
       if (c && c.name) {
         const lines: string[] = [`**${c.name}**${c.role_title ? ` — ${c.role_title}` : ''}`];
-        if (c.region) lines.push(`${de ? 'Region' : 'Region'}: ${c.region}`);
-        if (c.phone) lines.push(`${de ? 'Telefon' : 'Phone'}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
+        if (c.region) lines.push(`${t.contactRegion}: ${c.region}`);
+        if (c.phone) lines.push(`${t.contactPhone}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
         if (c.email) lines.push(`E-Mail: [${c.email}](mailto:${c.email})`);
-        pending.text = `${de ? 'Ihr zustaendiger Ansprechpartner' : 'Your responsible contact'}:\n\n${lines.join('\n')}`;
+        pending.text = `${t.contactHeading}:\n\n${lines.join('\n')}`;
       } else {
-        pending.text = de
-          ? 'Zu dieser Postleitzahl habe ich aktuell keinen direkten Ansprechpartner hinterlegt. Die GODELMANN-Beratung hilft Ihnen gerne weiter — oder stellen Sie mir Ihre fachliche Frage direkt hier.'
-          : 'I do not have a direct contact for this postal code yet. The GODELMANN advisory will be happy to help — or just ask me your technical question here.';
+        pending.text = t.contactNone;
       }
     } catch {
-      pending.text = de
-        ? 'Die Ansprechpartner-Suche ist gerade nicht erreichbar. Bitte versuchen Sie es spaeter erneut.'
-        : 'The contact lookup is currently unavailable. Please try again later.';
+      pending.text = t.contactUnavailable;
     }
     // QS: Dauer der Ansprechpartner-Suche als Latenz.
     pending.latencyMs = Date.now() - (pending.ts ?? Date.now());
@@ -2027,7 +2383,7 @@ export class GodelmannChatbot extends HTMLElement {
     if (this.stage === 'greeting' && !this.zielgruppeGefragt) {
       this.zielgruppeGefragt = true;
       this.appendCuratedMessage(
-        { role: 'assistant', text: ZIELGRUPPEN_NACHFRAGE[this.langKey], art: 'nachfrage' },
+        { role: 'assistant', text: tabelle(ZIELGRUPPEN_NACHFRAGE, this.langKey), art: 'nachfrage' },
         () => this.showSuggestions(followups),
       );
       return;
@@ -2039,8 +2395,12 @@ export class GodelmannChatbot extends HTMLElement {
     message: string,
     assistant: MessageEntry,
     allowCaptchaRetry: boolean,
+    wechsel = false,
   ): Promise<void> {
-    const body: Record<string, unknown> = { message, hp_website: '' };
+    // `lang` additiv (Server-Whitelist, Default de); `language_switch` laesst
+    // den Server den Zusammenfassungs-Turn selbst bauen (keine Injection).
+    const body: Record<string, unknown> = { message, hp_website: '', lang: this.langKey };
+    if (wechsel) body.language_switch = true;
     const conversationId = lsGet(LS_CONVERSATION_KEY);
     if (conversationId) body.conversation_id = conversationId;
     const altcha = await this.takeAltcha();
@@ -2078,7 +2438,7 @@ export class GodelmannChatbot extends HTMLElement {
             window.clearTimeout(timer);
             this.altchaPending = null;
             this.captchaDisabled = false;
-            return await this.requestChat(message, assistant, false);
+            return await this.requestChat(message, assistant, false, wechsel);
           }
           throw new ChatError('captcha', 'captcha rejected');
         }
@@ -2210,6 +2570,9 @@ export class GodelmannChatbot extends HTMLElement {
    */
   private attachFeedbackBar(entry: MessageEntry): void {
     if (entry.role !== 'assistant' || !entry.el) return;
+    // Meta-Nachrichten (Sprachwechsel-Divider, Geo-Sprachwahl) sind keine
+    // bewertbaren Antworten.
+    if (entry.art === 'sprachwechsel' || entry.art === 'sprachwahl') return;
     if (entry.el.querySelector('.fb')) {
       this.syncFeedbackBar(entry);
       return;
@@ -2234,6 +2597,27 @@ export class GodelmannChatbot extends HTMLElement {
     const down = mkBtn('fb-down', t.fbDown, FB_ICON_DOWN, t.fbDownShort);
     const cmt = mkBtn('fb-comment', t.fbComment, FB_ICON_COMMENT, t.fbCommentShort);
     bar.append(up, down, cmt);
+    // 4. Element (Mehrsprachigkeit 04.08.): Flagge + Kuerzel der Sprache
+    // DIESER Antwort (historisch korrekt) — Klick oeffnet das Sprachmenue.
+    // Nur zeigen, wenn mehr als eine Sprache freigeschaltet ist.
+    if (AKTIVE_SPRACHEN.length > 1) {
+      const sprache: ChatSprache =
+        entry.lang && istChatSprache(entry.lang) ? entry.lang : this.langKey;
+      const flag = document.createElement('button');
+      flag.type = 'button';
+      flag.className = 'fb-lang';
+      flag.setAttribute('aria-label', t.langMenu);
+      flag.setAttribute('title', t.langMenu);
+      flag.setAttribute('aria-haspopup', 'menu');
+      flag.setAttribute('aria-expanded', 'false');
+      flag.innerHTML = `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
+        `<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
+      flag.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleLangMenu(flag);
+      });
+      bar.append(flag);
+    }
 
     // Kommentar-Anzeige unter der Leiste. Befuellung ausschliesslich per
     // textContent (syncFeedbackBar) — Nutzertext wird nie als HTML geparst
@@ -2324,6 +2708,176 @@ export class GodelmannChatbot extends HTMLElement {
     }
   }
 
+  // --- Mehrsprachigkeit: Sprachmenue + Wechsel-Flow + Geo-Begruessung --------
+
+  private toggleLangMenu(anchor: HTMLButtonElement): void {
+    if (this.langMenuEl && this.langMenuAnchor === anchor) {
+      this.closeLangMenu(true);
+      return;
+    }
+    this.closeLangMenu(false);
+    this.openLangMenu(anchor);
+  }
+
+  private openLangMenu(anchor: HTMLButtonElement): void {
+    // Waehrend einer laufenden Antwort nicht umschalten (busy-Regel [M7]).
+    if (this.busy) return;
+    const menu = document.createElement('div');
+    menu.className = 'langmenu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', this.texts.langMenu);
+    for (const sprache of AKTIVE_SPRACHEN) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'langitem';
+      item.setAttribute('role', 'menuitemradio');
+      item.setAttribute('aria-checked', String(sprache === this.langKey));
+      item.innerHTML =
+        `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
+        `<span>${SPRACH_NAMEN[sprache]}</span>`;
+      item.addEventListener('click', () => this.switchLanguage(sprache));
+      menu.appendChild(item);
+    }
+    menu.addEventListener('keydown', (e) => {
+      // Esc schliesst NUR das Menue (stopPropagation: der Panel-Handler
+      // wuerde sonst gleich den ganzen Chat schliessen).
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        this.closeLangMenu(true);
+      }
+    });
+    anchor.setAttribute('aria-expanded', 'true');
+    // In der Blase verankern (.msg ist position:relative) — das Menue
+    // scrollt mit seiner Antwort mit.
+    const wrap = anchor.closest('.msg') ?? this.messagesEl;
+    wrap.appendChild(menu);
+    this.langMenuEl = menu;
+    this.langMenuAnchor = anchor;
+    const checked = menu.querySelector<HTMLButtonElement>('button[aria-checked="true"]');
+    (checked ?? menu.querySelector('button'))?.focus();
+    // Aussenklick schliesst (capture + composedPath: funktioniert durch den
+    // Shadow-DOM hindurch).
+    this.langMenuOutside = (e: Event): void => {
+      const path = e.composedPath();
+      if (this.langMenuEl && !path.includes(this.langMenuEl)
+          && (!this.langMenuAnchor || !path.includes(this.langMenuAnchor))) {
+        this.closeLangMenu(false);
+      }
+    };
+    document.addEventListener('click', this.langMenuOutside, true);
+  }
+
+  private closeLangMenu(returnFocus: boolean): void {
+    if (this.langMenuOutside) {
+      document.removeEventListener('click', this.langMenuOutside, true);
+      this.langMenuOutside = null;
+    }
+    this.langMenuEl?.remove();
+    this.langMenuEl = null;
+    this.langMenuAnchor?.setAttribute('aria-expanded', 'false');
+    if (returnFocus) this.langMenuAnchor?.focus();
+    this.langMenuAnchor = null;
+  }
+
+  /** Sprachwechsel per Flaggen-Menue. UI wechselt sofort ueberall; mit
+   *  bestehendem Modell-Verlauf liefert der Server als naechste Antwort
+   *  Bestaetigung + Kurz-Zusammenfassung in der neuen Sprache [K3]. */
+  private switchLanguage(lang: ChatSprache): void {
+    this.closeLangMenu(false);
+    if (this.busy || lang === this.langKey) return;
+    this.clearSuggestions();
+    this.chatLang = lang;
+    this.applyTexts();
+    // Divider-Pille in den Verlauf (persistiert; QS art 'sprachwechsel').
+    this.appendMessage({ role: 'assistant', text: `→ ${SPRACH_NAMEN[lang]}`, art: 'sprachwechsel' });
+    const conversationId = lsGet(LS_CONVERSATION_KEY);
+    if (!conversationId) {
+      // Kein Modell-Verlauf: Begruessung ist sprachreaktiv bereits
+      // umgestellt — nur die Chips neu zeigen. Kostenlos, kein Server-Call [K5].
+      this.showSuggestions([]);
+      this.saveSession();
+      return;
+    }
+    void this.startSwitchTurn();
+  }
+
+  /** Zusammenfassungs-Turn nach Sprachwechsel: wie startChat, aber ohne
+   *  User-Echo (der Server baut den Metaprompt selbst) und ohne die
+   *  Zielgruppen-Nachfrage danach. */
+  private async startSwitchTurn(): Promise<void> {
+    const gen = this.convGen;
+    this.busy = true;
+    this.sendBtn.disabled = true;
+    this.lastFollowups = [];
+    const assistant = this.appendMessage({ role: 'assistant', text: '' });
+    assistant.el?.classList.add('pending');
+    try {
+      await this.requestChat('', assistant, true, true);
+    } catch {
+      if (gen !== this.convGen) return;
+      // Wechsel-Turn fehlgeschlagen: leere Blase raeumen — die UI ist
+      // trotzdem umgestellt, die Direktive greift ab der naechsten Frage.
+      if (assistant.text === '' && assistant.el) {
+        assistant.el.remove();
+        this.messages = this.messages.filter((m) => m !== assistant);
+      }
+    } finally {
+      assistant.el?.classList.remove('pending');
+      this.busy = false;
+      this.sendBtn.disabled = false;
+    }
+    // Bewusst OHNE afterModelAnswer: nach dem Wechsel kein Slot-Filling,
+    // nur das Zweig-Menue in der neuen Sprache.
+    if (gen === this.convGen) this.showSuggestions([]);
+  }
+
+  /** Zweisprachige Geo-Sprachwahl: Chips nur in einer GANZ frischen Session
+   *  (keine Wahl, keine Nutzer-Nachricht, Weiche unberuehrt). [attrLang zuerst,
+   *  dann die Geo-Vorschlaege — mehrsprachige Laender liefern mehrere.] */
+  private geoAuswahl(): ChatSprache[] {
+    if (this.chatLang) return [];
+    if (this.stage !== 'greeting' || this.zielgruppeGefragt || this.awaitingPlz) return [];
+    if (this.messages.some((m) => m.role === 'user')) return [];
+    const fremde = this.geoLangs.filter((l) => l !== this.attrLang);
+    if (fremde.length === 0) return [];
+    return [this.attrLang, ...fremde];
+  }
+
+  /** Begruessungstext, ggf. zweisprachig (EINE Bubble mit Trenner) [Geo]. */
+  private greetingBubbleText(): string {
+    const fremde = this.geoAuswahl().filter((l) => l !== this.attrLang);
+    const erste = fremde[0];
+    if (!erste) return this.greetingText;
+    return `${this.greetingText}\n\n···\n\n${tabelle(TEXTS, erste).greeting}`;
+  }
+
+  /** Geo-Antwort ist da (loadConfig): eine bereits ausgespielte einsprachige
+   *  Begruessung nachtraeglich zweisprachig machen + Sprach-Chips zeigen. */
+  private refreshGeoGreeting(): void {
+    if (this.geoAuswahl().length === 0) return;
+    const greet = this.messages.find((m) => m.isGreeting);
+    if (!greet?.el || greet.el.classList.contains('pending') || greet.text.trim() === '') return;
+    greet.text = this.greetingBubbleText();
+    greet.el.innerHTML = renderMarkdown(greet.text);
+    this.attachFeedbackBar(greet);
+    if (!this.busy) this.showSuggestions([]);
+    this.saveSession();
+  }
+
+  /** Klick auf einen Geo-Sprach-Chip: Wahl als Nutzer-Echo dokumentieren
+   *  (QS art 'sprachwahl'), Sprache explizit setzen, Weiche in der gewaehlten
+   *  Sprache fortsetzen. Kein Server-Call (die Begruessung ist kuratiert). */
+  private chooseGeoLanguage(sprache: ChatSprache): void {
+    if (this.busy) return;
+    this.clearSuggestions();
+    this.appendMessage({ role: 'user', text: WEITER_IN[sprache], art: 'sprachwahl', lang: sprache });
+    this.chatLang = sprache;
+    // Begruessung kollabiert einsprachig auf die gewaehlte Sprache.
+    this.applyTexts();
+    this.saveSession();
+    this.showSuggestions([]);
+  }
+
   /** Feedback-Upsert mit 300-ms-Debounce je Nachricht: Schnellklicks
    *  (hoch->runter->hoch) wuerden sonst mehrere POSTs racen, deren
    *  Reihenfolge der Server nicht kennt. Gesendet wird IMMER der volle
@@ -2386,6 +2940,9 @@ export class GodelmannChatbot extends HTMLElement {
         ...(typeof m.latencyMs === 'number' ? { latenz_ms: m.latencyMs } : {}),
         // Die aktuell gezeigten Chips gehoeren zur LETZTEN Assistent-Nachricht.
         ...(m === letzte && this.suggestLabels.length > 0 ? { vorschlaege: this.suggestLabels } : {}),
+        // Chat-Sprache je Nachricht (Server reicht sie erst nach der
+        // DB-Migration an PostgREST weiter — additiv unschaedlich).
+        ...(m.lang && istChatSprache(m.lang) ? { sprache: m.lang } : {}),
       }));
       const body: Record<string, unknown> = {
         sitzung_id: this.sitzungId,
