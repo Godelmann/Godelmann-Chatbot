@@ -40,6 +40,7 @@ Versionierung): [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md).
 | [`.xoder/DEPLOYMENT.md`](.xoder/DEPLOYMENT.md) | Deploy-Flow: Frontend `deploy-godelmann.sh chatbot` · Backend `deploy-spass.sh godelmann-chatbot` (Namen unterscheiden sich!) |
 | [`.xoder/BACKLOG.md`](.xoder/BACKLOG.md) | Betriebs-Backlog (inkl. Sektion `PARENT`) |
 | [`.xoder/DEPENDENCIES.md`](.xoder/DEPENDENCIES.md) | Abhaengigkeits-Policy: Bot-Konfiguration, Cooldown-Regel, Ausnahmen-Log |
+| [`.xoder/INTERFACES.md`](.xoder/INTERFACES.md) | Ausgehende Schnittstellen: Widget + Dienst, Empfaenger und Modell-Weiterleitung belegt |
 | [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md) | Verbindliche Spezifikation (Web-Components-Pflicht, API-Vertrag, Abnahme) |
 | [`docs/ABLAUFPLAN-HEIKE-2026-07-20.md`](docs/ABLAUFPLAN-HEIKE-2026-07-20.md) | Gespraechs-Ablaufplan (SSoT) — Zielgruppen-Weiche (Fachkunde/Endkunde), Guided Selling, PLZ-Ansprechpartner |
 | [`docs/EINBINDUNG.md`](docs/EINBINDUNG.md) | Pflicht-Deliverable — Integrations-Doku fuer die godelmann.de-Agentur |
