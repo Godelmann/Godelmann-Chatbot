@@ -1,10 +1,16 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-03 (Paket-Version **0.0.10**, test)
+> Stand: 2026-08-04 (Paket-Version **0.0.11**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.11 (2026-08-04, test)** — **Drawer entrotet + Namens-Konsistenz:** Akzent-Default
+  Anthrazit #3F4549 statt Godelmann-Rot (rotes Drawer-Design zu aufdringlich; Rot bleibt per
+  `--gdm-chat-accent` setzbar), Titel + ARIA-Labels konsistent **"Chat-Berater"** (wie das
+  Rail-Item im Proxy 0.1.2); Tipp-Punkte + PDF-Badge haengen jetzt am Akzent. Serverseitig
+  gleichgezogen: Selbstbezeichnung im System-Prompt (spass `b353f6a`). Verify
+  test.godelmann.net: frische Session antwortet "Ich bin der digitale Chat-Berater".
 - **0.0.10 (2026-08-03, test)** — **Webchat-QS: Feedback + Transcript-Melder.** An jeder
   fertigen Assistent-Antwort eine dezente Feedback-Leiste (Daumen hoch/runter + Inline-
   Kommentar; Upsert `POST /api/qs/feedback` mit vollem Zustand, 300-ms-Debounce, Klick auf
