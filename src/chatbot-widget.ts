@@ -108,9 +108,9 @@ interface Texts {
 
 const TEXTS: Record<'de' | 'en', Texts> = {
   de: {
-    bubbleOpen: 'Godelmann-Assistent oeffnen',
-    bubbleClose: 'Godelmann-Assistent schliessen',
-    headerTitle: 'Godelmann-Assistent',
+    bubbleOpen: 'Chat-Berater oeffnen',
+    bubbleClose: 'Chat-Berater schliessen',
+    headerTitle: 'Chat-Berater',
     greeting:
       'Willkommen bei GODELMANN. Ich berate Sie rund um unsere Produkte, ' +
       'Flächen und Ideen für Garten, Haus und Objekt. Damit ich Sie gezielt ' +
@@ -608,9 +608,11 @@ class ChatError extends Error {
 const STYLE = /* css */ `
   :host {
     /* Dokumentierte Theming-Hooks */
-    /* Godelmann-CI: Red 100 #E54F35, Red 90 (Hover) #B33E29,
-       Anthracite 100/80/30/15/10. Palette: Godelmann/CLAUDE.md */
-    --_accent: var(--gdm-chat-accent, #E54F35);
+    /* Godelmann-CI-Palette: Godelmann/CLAUDE.md. Akzent-Default seit 0.0.11
+       ANTHRAZIT (#3F4549) statt Red 100 — das rote Drawer-Design war zu
+       aufdringlich (User-Entscheid 04.08.); Rot bleibt per
+       --gdm-chat-accent jederzeit setzbar. */
+    --_accent: var(--gdm-chat-accent, #3F4549);
     --_z: var(--gdm-chat-z-index, 2147483000);
     --_font: var(--gdm-chat-font, inherit);
     /* Breite des Seiten-Drawers (mode="drawer"). Ueberschreibbar; Default 480px. */
@@ -694,7 +696,7 @@ const STYLE = /* css */ `
   .msg a { color: var(--_accent); text-decoration: underline; }
   .msg img.chatimg { max-height: 120px; width: auto; max-width: 100%; border-radius: 6px; margin: 4px 6px 4px 0; display: inline-block; vertical-align: top; }
   .msg a.chatimg-link { position: relative; display: inline-block; line-height: 0; }
-  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: #E54F35; color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; border-radius: 3px; pointer-events: none; }
+  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: var(--_accent); color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; border-radius: 3px; pointer-events: none; }
   .msg .tablewrap { overflow-x: auto; margin: 4px 0; }
   .msg table { border-collapse: collapse; width: 100%; font-size: 12px; }
   .msg th, .msg td { border: 1px solid #E2E3E3; padding: 4px 7px; text-align: left; vertical-align: top; }
@@ -802,6 +804,7 @@ const STYLE = /* css */ `
     from { transform: translateX(100%); }
     to   { transform: translateX(0); }
   }
+  .dot { fill: var(--_accent); }
   @media (prefers-reduced-motion: reduce) {
     .root.mode-drawer .panel:not([hidden]) { animation: none; }
   }
@@ -819,9 +822,9 @@ const BUBBLE_ICON = `
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H9.4L5.6 19.6c-.66.53-1.6.06-1.6-.78V5.5Z"
       fill="currentColor"/>
-    <circle cx="8.6" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
-    <circle cx="12" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
-    <circle cx="15.4" cy="9.6" r="1.15" fill="#E54F35" class="dot"/>
+    <circle cx="8.6" cy="9.6" r="1.15" class="dot"/>
+    <circle cx="12" cy="9.6" r="1.15" class="dot"/>
+    <circle cx="15.4" cy="9.6" r="1.15" class="dot"/>
   </svg>`;
 
 /** Feedback-Icons (Inline-SVG, kein neues Asset): Daumen hoch/runter +
