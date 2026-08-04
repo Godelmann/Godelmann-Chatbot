@@ -1,0 +1,36 @@
+# Dependabot — automatische Abhaengigkeits-Pflege
+#
+# WARUM MIT COOLDOWN: Ohne Wartezeit adoptiert man frisch veroeffentlichte
+# Fassungen sofort — und genau in diesem Fenster liefen 2025 die
+# npm-Lieferketten-Angriffe (chalk/debug am 08.09., Shai-Hulud am 11./12.09.:
+# rund 2,5 Stunden bis zum Takedown). Ein Bot ohne Cooldown ist deshalb kein
+# Schutz, sondern ein automatischer Uebernahmeweg. Patch 3 Tage, Minor 7,
+# Major 14 — bei SICHERHEITS-Updates greift der Cooldown bewusst NICHT.
+#
+# WARUM MAJORS NICHT AUTOMATISCH: Ein Major bricht per Definition etwas. Die
+# PRs entstehen, damit sie sichtbar sind, werden aber von Hand entschieden.
+#
+# Policy + Ausnahmen-Log je Repo: .xoder/DEPENDENCIES.md
+# Voller Prozess: node-weiter Skill /XODER-dependency-update
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    target-branch: "main"
+    open-pull-requests-limit: 5
+    # Wartezeit nach Veroeffentlichung — der eigentliche Schutz (s. Kopf).
+    cooldown:
+      default-days: 3
+      semver-minor-days: 7
+      semver-major-days: 14
+    # Majors erzeugen einen PR, werden aber nie automatisch uebernommen.
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
