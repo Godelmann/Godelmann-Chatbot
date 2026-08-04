@@ -1702,9 +1702,12 @@ export class GodelmannChatbot extends HTMLElement {
     this.privacyEl.innerHTML =
       `${escapeHtml(t.privacy)} <a href="${PRIVACY_URL}" target="_blank" ` +
       `rel="noopener noreferrer">${escapeHtml(t.privacyLink)}</a>`;
-    // Greeting-Nachrichten sprachreaktiv halten (inkl. Geo-Zweisprachigkeit)
+    // Greeting-Nachrichten sprachreaktiv halten (inkl. Geo-Zweisprachigkeit);
+    // ihr Sprach-Stempel zieht mit (die Flagge zeigt sonst die alte Sprache
+    // zu neuem Text).
     for (const m of this.messages) {
       if (m.isGreeting) {
+        m.lang = this.langKey;
         m.text = this.greetingBubbleText();
         if (m.el) {
           m.el.innerHTML = renderMarkdown(m.text);
@@ -2689,6 +2692,16 @@ export class GodelmannChatbot extends HTMLElement {
   private syncFeedbackBar(entry: MessageEntry): void {
     const el = entry.el;
     if (!el) return;
+    // Flagge nachziehen (sprachreaktive Nachrichten wie die Begruessung
+    // wechseln ihren Sprach-Stempel — der Button behaelt seinen Listener).
+    const flagBtn = el.querySelector<HTMLButtonElement>('.fb-lang');
+    if (flagBtn) {
+      const sprache: ChatSprache =
+        entry.lang && istChatSprache(entry.lang) ? entry.lang : this.langKey;
+      flagBtn.innerHTML =
+        `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
+        `<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
+    }
     const up = el.querySelector('.fb-up');
     const down = el.querySelector('.fb-down');
     up?.classList.toggle('active', entry.rating === 1);
@@ -2790,8 +2803,15 @@ export class GodelmannChatbot extends HTMLElement {
     this.applyTexts();
     // Divider-Pille in den Verlauf (persistiert; QS art 'sprachwechsel').
     this.appendMessage({ role: 'assistant', text: `→ ${SPRACH_NAMEN[lang]}`, art: 'sprachwechsel' });
-    const conversationId = lsGet(LS_CONVERSATION_KEY);
-    if (!conversationId) {
+    // Zusammenfassungs-Turn NUR, wenn der SICHTBARE Verlauf eine echte
+    // Modell-Antwort traegt. Die conversation_id allein reicht nicht: sie
+    // lebt in localStorage tage-lang weiter, waehrend die Sitzung (Tab)
+    // laengst frisch ist — der Server wuerde sonst ein altes, hier gar nicht
+    // sichtbares Gespraech zusammenfassen (Chrome-Abnahme 04.08.).
+    const hatModellVerlauf = this.messages.some(
+      (m) => m.role === 'assistant' && m.art === 'antwort' && m.text.trim() !== '',
+    );
+    if (!hatModellVerlauf || !lsGet(LS_CONVERSATION_KEY)) {
       // Kein Modell-Verlauf: Begruessung ist sprachreaktiv bereits
       // umgestellt — nur die Chips neu zeigen. Kostenlos, kein Server-Call [K5].
       this.showSuggestions([]);
