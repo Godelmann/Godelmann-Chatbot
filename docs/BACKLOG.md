@@ -1,10 +1,17 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-04 (Paket-Version **0.0.14**, test)
+> Stand: 2026-08-04 (Paket-Version **0.0.15**, test)
 > Maintainer: Dietmar Scharf
 
 ## Releases
 
+- **0.0.15 (2026-08-04, test)** — **Mehrsprachigkeits-Haertung nach Chrome-Abnahme:**
+  (1) Wechsel-Zusammenfassung nur noch bei ECHTER Modell-Antwort im sichtbaren Verlauf —
+  die `conversation_id` lebt in localStorage tage-lang weiter, waehrend die Tab-Sitzung
+  frisch ist; der Server fasste sonst ein altes, unsichtbares Gespraech zusammen.
+  (2) Sprachreaktive Nachrichten (Begruessung) wechseln ihren Sprach-Stempel mit;
+  `syncFeedbackBar` zieht die Flagge bestehender Leisten nach (vorher: cs-Text mit
+  DE-Flagge).
 - **0.0.14 (2026-08-04, test)** — **Mehrsprachigkeit Stufe 1 (Plan „Mehrsprachigkeit +
   Sprachumschaltung", AP3):** ChatSprache-Typ mit 8er-Set (de/en/fr/it/es/nl/pl/cs),
   freigeschaltet de/en/**cs** (AKTIVE_SPRACHEN-Flag; fr/it/es/nl/pl folgen nach
