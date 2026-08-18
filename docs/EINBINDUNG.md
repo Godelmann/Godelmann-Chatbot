@@ -62,6 +62,34 @@ vorwaermen, bevor das Modul laedt:
 <link rel="preconnect" href="https://chatbot.godelmann.bot">
 ```
 
+## Live-Vorschau der fertigen Einbindung
+
+Die vollstaendige Ziel-Einbindung (Drawer-Modus, Ausloeser als viertes Element
+der Kontakt-Leiste rechts) ist auf der Godelmann-Testumgebung zu sehen:
+**https://test.godelmann.net** — die Seite liegt hinter einer Passwortsperre;
+die Zugangsdaten stehen in der Begleit-E-Mail. Dort sind Verhalten, Optik und
+das Zusammenspiel mit dem Seitenlayout exakt so umgesetzt, wie es fuer
+godelmann.de vorgesehen ist (inkl. des mitschiebenden Headers im Drawer-Modus,
+s. Abschnitt Drawer).
+
+### Chat-Icon (Kontakt-Leiste)
+
+Das fuer den Ausloeser vorgesehene Icon (Sprechblase + Godelmann-Funke) als
+Inline-SVG — 24x24, Strichstaerke folgt der Site-Icon-Sprache, Farbe erbt via
+`currentColor`:
+
+```html
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M12.5 6H21.5V19L16 23.5V19H6V12.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M6 1L7.6 4.4L11 6L7.6 7.6L6 11L4.4 7.6L1 6L4.4 4.4Z" fill="currentColor"/>
+</svg>
+```
+
+Auf der Testumgebung ist dasselbe Motiv als CSS-Masken-Variante im Einsatz
+(`.icon-gdm-chat::before` mit `mask-image: url("data:image/svg+xml,...")`),
+damit es sich wie die uebrigen Rail-Icons ueber `background-color` einfaerbt —
+beide Formen sind gleichwertig nutzbar.
+
 ## Autorisierte Domains
 
 > **Uebergangsphase:** Fuer die Integrationsphase ist die Domain-Pruefung
