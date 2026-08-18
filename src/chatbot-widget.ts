@@ -81,6 +81,34 @@ const SCRIPT_ORIGIN: string = (() => {
 })();
 
 // ---------------------------------------------------------------------------
+// Autorisierte Wirt-Domains (18.08., Salient-Einbindung ueber godelmann.bot):
+// Das Widget initialisiert sich nur auf Godelmann-Seiten. Das ist ein
+// defense-in-depth-/Komfort-Gate OHNE Sicherheitsanspruch — das Skript ist
+// oeffentlich kopierbar; der wirksame Schutz ist das Origin-Gate am Server
+// (Caddy-Allowlist: fremde Origins bekommen auf /api/* + /altcha/* ein 403,
+// der Chat funktioniert dort nie). Hier geht es darum, versehentliche
+// Fremd-Einbettungen sichtbar und sauber scheitern zu lassen statt mit
+// kryptischen Netzwerkfehlern.
+// ---------------------------------------------------------------------------
+
+const AUTORISIERTE_WIRT_DOMAINS: readonly string[] = [
+  'godelmann.de', 'godelmann.com', 'godelmann.net', 'godelmann.bot',
+];
+
+/** Ist `hostname` eine autorisierte Wirt-Domain (exakt oder Subdomain) bzw.
+ *  eine lokale Entwicklungsumgebung? Pure Funktion, unit-testbar. */
+export function istAutorisierterHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return true;
+  return AUTORISIERTE_WIRT_DOMAINS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
+}
+
+/** Hinweis nur EINMAL je Seite ausgeben, auch wenn mehrere Elemente im DOM stehen. */
+let wirtHinweisAusgegeben = false;
+
+// ---------------------------------------------------------------------------
 // Mehrsprachigkeit (04.08.): 8er-Sprachset des Chat-Beraters — strikt getrennt
 // von der Website-Sprache (`lang`-Attribut = Einstiegssprache). Freigeschaltet
 // sind zunaechst de/en/cs (AKTIVE_SPRACHEN); die uebrigen fuenf sind im
@@ -1253,6 +1281,9 @@ export class GodelmannChatbot extends HTMLElement {
    *  feuert auch, wenn das Element im DOM verschoben wird - sonst stuenden
    *  Verlauf und Zielgruppen-Weiche doppelt da. */
   private sessionRestored = false;
+  /** Wirt-Gate (18.08.): auf nicht autorisierten Domains wird nie gebaut —
+   *  disconnectedCallback darf dann keine DOM-Referenzen anfassen. */
+  private wirtGesperrt = false;
   /** Zaehlt Unterhaltungen. Ein per "Neue Unterhaltung" abgebrochener Lauf
    *  darf seine Fehlermeldung NICHT in die frische Unterhaltung schreiben. */
   private convGen = 0;
@@ -1352,6 +1383,19 @@ export class GodelmannChatbot extends HTMLElement {
   }
 
   connectedCallback(): void {
+    // Wirt-Gate (18.08.): auf fremden Domains gar nicht erst initialisieren
+    // (kein Shadow-Render, keine Netzwerk-Calls) — s. istAutorisierterHost.
+    if (!istAutorisierterHost(window.location.hostname)) {
+      this.wirtGesperrt = true;
+      if (!wirtHinweisAusgegeben) {
+        wirtHinweisAusgegeben = true;
+        console.info(
+          '[godelmann-chatbot] Einbindung nur auf autorisierten Godelmann-Domains '
+          + '(godelmann.de/.com) moeglich. Kontakt: blueits@ramteid.gmbh',
+        );
+      }
+      return;
+    }
     // Ausgelieferte Fassung von aussen ablesbar machen (Abgleich test/prod).
     this.setAttribute('data-version', __WIDGET_VERSION__)
     if (!this.rootDiv) this.buildDom();
@@ -1381,6 +1425,9 @@ export class GodelmannChatbot extends HTMLElement {
    *  die Rail-Verdrahtung. Ohne diese Reinigung bliebe z. B. der margin-right
    *  am <html> haengen, wenn das Element zur Laufzeit ersetzt wird. */
   disconnectedCallback(): void {
+    // Wirt-Gate: nie initialisiert -> nichts aufzuraeumen (und kein Zugriff
+    // auf nie gebaute DOM-Referenzen).
+    if (this.wirtGesperrt) return;
     // Offenes Sprachmenue schliessen (raeumt auch den document-Listener).
     this.closeLangMenu(false);
     this.abortCtrl?.abort();
