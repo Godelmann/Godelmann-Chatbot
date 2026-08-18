@@ -24,7 +24,7 @@
 > **Optik-Stand 0.0.13 (04.08.2026):** Kopfzeilen-Buttons und Feedback-Leiste zeigen jetzt Icon + Text („Neue Unterhaltung", „Vollbild"/„Verkleinern", „Schließen"; „Hilfreich"/„Nicht hilfreich"/„Kommentar"), Icons in der Formensprache der godelmann.de-Site-Icons; unter 520px wieder icon-only. Akzent-Default Anthrazit. **Snippet, Attribute, Events und CSS-Properties sind unverändert (v1-stabil)** — `--gdm-chat-accent`/`--gdm-chat-accent-hover` erlauben weiterhin eigenes Theming.
 
 > Stand 2026-08-18 (Doku v1.2) · Widget-Version v1 (`chatbot-widget.v1.js`, Fassung 0.0.15) · fuer die godelmann.de-Agentur
-> Ansprechpartner: **Dietmar Scharf** (BLUE ITS / Ramteid GmbH), blueits@ramteid.gmbh
+> Technischer Ansprechpartner: **Dietmar Scharf** (Godelmann-Chatbot-Betrieb) — Kontakt ueber Godelmann / Frau Sturm
 
 Das Widget ist eine **Web Component nach WHATWG-Standard** (Custom Element +
 Shadow DOM) ohne Framework-Abhaengigkeit. Es spricht mit dem
@@ -63,6 +63,13 @@ vorwaermen, bevor das Modul laedt:
 ```
 
 ## Autorisierte Domains
+
+> **Uebergangsphase:** Fuer die Integrationsphase ist die Domain-Pruefung
+> voruebergehend deaktiviert — die Einbindung funktioniert damit auch auf den
+> Testsystemen der Agentur sofort. Bitte kurzfristig die Liste der
+> Test-/Staging-Domains mitteilen (Schema `https://hostname`, ohne Pfad);
+> danach wird die Pruefung mit diesen Domains scharf geschaltet.
+
 
 Auslieferung des Widgets **und** alle Chat-APIs sind serverseitig auf
 autorisierte Godelmann-Domains beschraenkt:
@@ -295,6 +302,5 @@ Das Widget zeigt zusaetzlich einen permanenten Hinweis mit Link auf
 
 | | |
 |---|---|
-| **Technik / Betrieb** | Dietmar Scharf, BLUE ITS (Ramteid GmbH) |
-| **E-Mail** | blueits@ramteid.gmbh |
-| **Repo** | `Godelmann/Godelmann-Chatbot` (Widget) · Backend: `Ramteid-GmbH/spass` `examples/godelmann-chatbot-server` |
+| **Technik / Betrieb** | Dietmar Scharf (Godelmann-Chatbot-Betrieb) |
+| **Kontakt** | ueber Godelmann / Frau Sturm |

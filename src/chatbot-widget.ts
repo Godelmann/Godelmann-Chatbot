@@ -95,6 +95,13 @@ const AUTORISIERTE_WIRT_DOMAINS: readonly string[] = [
   'godelmann.de', 'godelmann.com', 'godelmann.net', 'godelmann.bot',
 ];
 
+/** UEBERGANG (18.08., Entscheid Dietmar): Pruefung DEAKTIVIERT, damit die
+ *  Agentur auf ihren Testsystemen sofort einbinden kann. Nach Meldung der
+ *  Salient-Testdomains: Domains oben ergaenzen und auf `true` schalten
+ *  (im selben Zug das Caddy-Origin-Gate scharf schalten — s.
+ *  platform-control Caddyfile, chatbot.godelmann.bot-Block). */
+const WIRT_PRUEFUNG_AKTIV = false;
+
 /** Ist `hostname` eine autorisierte Wirt-Domain (exakt oder Subdomain) bzw.
  *  eine lokale Entwicklungsumgebung? Pure Funktion, unit-testbar. */
 export function istAutorisierterHost(hostname: string): boolean {
@@ -1385,13 +1392,14 @@ export class GodelmannChatbot extends HTMLElement {
   connectedCallback(): void {
     // Wirt-Gate (18.08.): auf fremden Domains gar nicht erst initialisieren
     // (kein Shadow-Render, keine Netzwerk-Calls) — s. istAutorisierterHost.
-    if (!istAutorisierterHost(window.location.hostname)) {
+    // Im UEBERGANG deaktiviert (WIRT_PRUEFUNG_AKTIV), s. Kommentar dort.
+    if (WIRT_PRUEFUNG_AKTIV && !istAutorisierterHost(window.location.hostname)) {
       this.wirtGesperrt = true;
       if (!wirtHinweisAusgegeben) {
         wirtHinweisAusgegeben = true;
         console.info(
-          '[godelmann-chatbot] Einbindung nur auf autorisierten Godelmann-Domains '
-          + '(godelmann.de/.com) moeglich. Kontakt: blueits@ramteid.gmbh',
+          '[godelmann-chatbot] Einbindung nur auf autorisierten '
+          + 'Godelmann-Domains (godelmann.de/.com) moeglich.',
         );
       }
       return;
