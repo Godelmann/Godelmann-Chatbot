@@ -1,5 +1,13 @@
 # Einbindung — GODELMANN Chatbot-Widget (`<godelmann-chatbot>`)
 
+> **Doku v1.3 (18.08.2026):** Die **Ziel-Einbindung fuer godelmann.de** (Seiten-Drawer
+> mit Rail-Ausloeser „Chat-Berater") steht jetzt als erster Abschnitt mit 1:1
+> kopierbaren Bloecken (Rail-Item, Widget-Tag, Support-Style inkl. Icon-Masken-CSS).
+> NEU: Abschnitt **Consent-Verwaltung (Usercentrics)** — alle Script-Snippets tragen
+> `data-uc-allowed="true"`; Mehrsprachigkeits-Hinweis (`lang` je Seitensprache,
+> `cs` ergaenzt); Akzent-Defaults korrigiert (Anthrazit seit 0.0.13).
+> **Snippet, Attribute, Events und CSS-Properties bleiben v1-stabil.**
+
 > **Offizieller Einbindungs-Host + autorisierte Domains, Doku v1.2 (18.08.2026):**
 > Der Chatbot wird fuer die Einbindung auf godelmann.de/.com ueber den eigenen
 > Host **`https://chatbot.godelmann.bot`** ausgeliefert (unabhaengig von den
@@ -23,7 +31,7 @@
 
 > **Optik-Stand 0.0.13 (04.08.2026):** Kopfzeilen-Buttons und Feedback-Leiste zeigen jetzt Icon + Text („Neue Unterhaltung", „Vollbild"/„Verkleinern", „Schließen"; „Hilfreich"/„Nicht hilfreich"/„Kommentar"), Icons in der Formensprache der godelmann.de-Site-Icons; unter 520px wieder icon-only. Akzent-Default Anthrazit. **Snippet, Attribute, Events und CSS-Properties sind unverändert (v1-stabil)** — `--gdm-chat-accent`/`--gdm-chat-accent-hover` erlauben weiterhin eigenes Theming.
 
-> Stand 2026-08-18 (Doku v1.2) · Widget-Version v1 (`chatbot-widget.v1.js`, Fassung 0.0.15) · fuer die godelmann.de-Agentur
+> Stand 2026-08-18 (Doku v1.3) · Widget-Version v1 (`chatbot-widget.v1.js`, Fassung 0.0.17) · fuer die godelmann.de-Agentur
 > Technischer Ansprechpartner: **Dietmar Scharf** (Godelmann-Chatbot-Betrieb) — Kontakt ueber Godelmann / Frau Sturm
 
 Das Widget ist eine **Web Component nach WHATWG-Standard** (Custom Element +
@@ -40,14 +48,118 @@ demselben Snippet und derselben Unterhaltung:
   (z. B. das Utility-Rail-Item), Vollbild-Wechsel auf eine eigene Seite.
 - **`page`** — der Chat fuellt einen Container als eigene (Unter-)Seite.
 
-**Alles bleibt v1** (additiv): Wer nur das bisherige Snippet nutzt, bekommt
-unveraendert die Floating-Bubble. Das **Lieferpaket fuer godelmann.de** (Rail +
-Drawer + Seite) steht unten in Abschnitt „Einbindung als Seiten-Drawer".
+**Alles bleibt v1** (additiv): Wer nur das 2-Zeilen-Snippet nutzt, bekommt
+die Floating-Bubble (Abschnitt „Alternative: Floating-Bubble"). **Fuer
+godelmann.de gilt die Ziel-Einbindung im direkt folgenden Abschnitt.**
 
-## Snippet (Floating, unveraendert)
+## Ziel-Einbindung godelmann.de (Seiten-Drawer) — Lieferpaket
+
+**Das ist die fuer godelmann.de vorgesehene Variante** (identisch zur
+Live-Vorschau auf der Testumgebung, s. u.): Ausloeser als viertes Element der
+Kontakt-Leiste rechts („Chat-Berater"), Chat als rechter Seiten-Drawer, der die
+Seite sanft schmaler schiebt, plus Vollbild-Seite `/chat`. Die Einbindung ist
+**minimalinvasiv** — im Kern drei kleine Bausteine (Rail-Item, Widget-Tag, ein
+Style-Block) plus optional die CMS-Seite. Alle Bloecke sind 1:1 kopierbar und
+entsprechen zeichengenau der Referenz-Einbindung der Testumgebung.
+
+### 1. Ausloeser in der Kontakt-Leiste (Rail-Item)
+
+Ein zusaetzliches Rail-Item mit dem Attribut `data-gdm-chat-launcher`. Das Widget
+verdrahtet es automatisch (Klick oeffnet/schliesst den Drawer, `aria-expanded`
+wird gespiegelt) — **kein Inline-JavaScript noetig** (CSP-freundlich).
+`href="/chat"` ist der Fallback ohne JavaScript. Referenz-Markup der
+Testumgebung (der Tailwind-Klassenstring entspricht den heutigen Rail-Items der
+Site und darf an deren Stand angepasst werden — funktional noetig sind nur
+`data-gdm-chat-launcher`, die ARIA-Attribute und die Icon-Klasse `icon-gdm-chat`):
 
 ```html
-<script type="module" src="https://chatbot.godelmann.bot/chatbot-widget.v1.js"></script>
+<a data-gdm-chat-launcher role="button" tabindex="0" aria-expanded="false" aria-label="Chat-Berater oeffnen" href="/chat"
+   class="translate-x-48 bg-anthracite-80 text-white transition-all md:translate-x-0 group-focus/utility-nav:translate-x-0 group-focus-within/utility-nav:translate-x-0 group-data-[expanded]/utility-nav:translate-x-0 group-focus/utility-nav:grow md:group-focus/utility-nav:grow-0 flex md:inline-block justify-center group-focus-within/utility-nav:grow group-data-[expanded]/utility-nav:grow md:group-focus-within/utility-nav:grow-0 md:group-data-[expanded]/utility-nav:grow-0 grow-0 md:bg-anthracite-100 md:bg-opacity-80 md:text-white p-12 md:mb-px md:hocus:bg-red-100 cursor-pointer">
+    <span class="icon icon-gdm-chat md:mr-12" aria-hidden="true"></span>
+    <span class="hidden md:inline">Chat-Berater</span>
+</a>
+```
+
+### 2. Das Widget selbst (Drawer-Modus)
+
+```html
+<script type="module" src="https://chatbot.godelmann.bot/chatbot-widget.v1.js" data-uc-allowed="true"></script>
+<godelmann-chatbot mode="drawer" launcher="none" page-url="/chat" lang="de"></godelmann-chatbot>
+```
+
+`data-uc-allowed="true"` verhindert, dass die Usercentrics-Consent-Verwaltung
+das Script automatisch blockt (Details im Abschnitt „Consent-Verwaltung");
+`lang` bitte je Seitensprache setzen (Abschnitt „Attribute", Mehrsprachigkeit).
+
+### 3. Der Support-Style-Block (mitschiebender Header + Chat-Icon)
+
+Der Drawer schiebt den Seiteninhalt ueber einen `margin-right` am `<html>` (setzt
+das Widget selbst, inkl. Marker-Klasse `gdm-chat-drawer-open`). **Fest
+positionierte** Elemente (Header und Rail) folgen einem html-`margin` nicht —
+die erste Regel zieht sie mit (mit `right`, **nicht** `transform`, sonst bricht
+die Rail-Mechanik). Die zweite Regel liefert das Chat-Icon als Masken-SVG, das
+sich wie die uebrigen Rail-Icons ueber `background-color` einfaerbt. Kompletter
+Block zum Kopieren (zeichengleich zur Testumgebung; der Marker
+`data-gdm-chat-drawer-support` dient nur der Wiedererkennung):
+
+```html
+<style data-gdm-chat-drawer-support>
+html.gdm-chat-drawer-open [data-header] header,
+html.gdm-chat-drawer-open div[data-inject="frm-utility-nav"] {
+  right: var(--gdm-chat-drawer-width, 480px);
+  transition: right .8s ease;
+}
+.icon-gdm-chat::before {
+  content: "";
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12.5 6H21.5V19L16 23.5V19H6V12.5' stroke='black' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M6 1L7.6 4.4L11 6L7.6 7.6L6 11L4.4 7.6L1 6L4.4 4.4Z' fill='black'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12.5 6H21.5V19L16 23.5V19H6V12.5' stroke='black' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M6 1L7.6 4.4L11 6L7.6 7.6L6 11L4.4 7.6L1 6L4.4 4.4Z' fill='black'/%3E%3C/svg%3E");
+  background-color: #fff;
+}
+</style>
+```
+
+Die Selektoren gelten fuer die heutige godelmann.de-Struktur (`[data-header] header`
+= Kopf, `div[data-inject="frm-utility-nav"]` = Rail; beide auf der Live-Site
+vorhanden, Stand 18.08.2026). Aendert sich das Markup, nur diese Regel anpassen.
+Wer das Icon lieber als Inline-SVG setzt: gleichwertige Variante im Abschnitt
+„Chat-Icon (Kontakt-Leiste)".
+
+### 4. Vollbild-Seite `/chat` (CMS, optional aber empfohlen)
+
+Eine eigene Seite (Route `/chat`, im normalen Header/Footer-Stil), die den Berater
+in einen **hoehen-gebenden Container** setzt:
+
+```html
+<div style="height:min(78vh,780px); min-height:480px;">
+  <godelmann-chatbot mode="page" page-url="/chat"
+    style="display:block; width:100%; height:100%;"></godelmann-chatbot>
+</div>
+<script type="module" src="https://chatbot.godelmann.bot/chatbot-widget.v1.js" data-uc-allowed="true"></script>
+```
+
+Drawer und Seite teilen dieselbe Unterhaltung (gleiche Origin, gleicher
+`sessionStorage`): Punchout aus dem Drawer oeffnet `/chat`, „Verkleinern" fuehrt
+zurueck.
+
+> **Mobil:** Auf kleinen Displays wird der Drawer automatisch zum
+> Vollflaechen-Panel (kein Schieben) — nichts weiter zu tun.
+>
+> **Betriebsannahmen:** Genau **eine** `<godelmann-chatbot>`-Instanz je Seite;
+> klassische Seitennavigation vorausgesetzt. Sollte spaeter eine Teilnavigation
+> (PJAX/Turbo o. ae.) eingefuehrt werden, das Element im persistenten Layout
+> belassen, damit die laufende Unterhaltung sichtbar bleibt.
+>
+> **Demo ohne Agentur:** Der Godelmann-Proxy (`test.godelmann.net`) injiziert die
+> Bausteine 1+3 der Ziel-Einbindung bereits selbst — dort ist die komplette
+> Einbindung ohne CMS-Aenderung sichtbar (Punchout auf `test.godelmann.net/chat`).
+
+
+## Alternative: Floating-Bubble (2-Zeilen-Snippet)
+
+Falls statt des Drawers die schwebende Chat-Bubble unten rechts gewuenscht ist:
+
+```html
+<script type="module" src="https://chatbot.godelmann.bot/chatbot-widget.v1.js" data-uc-allowed="true"></script>
 <godelmann-chatbot lang="de" position="bottom-right"></godelmann-chatbot>
 ```
 
@@ -85,9 +197,9 @@ Inline-SVG — 24x24, Strichstaerke folgt der Site-Icon-Sprache, Farbe erbt via
 </svg>
 ```
 
-Auf der Testumgebung ist dasselbe Motiv als CSS-Masken-Variante im Einsatz
-(`.icon-gdm-chat::before` mit `mask-image: url("data:image/svg+xml,...")`),
+Auf der Testumgebung ist dasselbe Motiv als CSS-Masken-Variante im Einsatz,
 damit es sich wie die uebrigen Rail-Icons ueber `background-color` einfaerbt —
+der fertige Masken-CSS-Block steht in der Ziel-Einbindung (Baustein 3);
 beide Formen sind gleichwertig nutzbar.
 
 ## Autorisierte Domains
@@ -111,6 +223,10 @@ funktioniert nicht. Zusaetzlich initialisiert sich das Widget nur auf
 Godelmann-Domains (Laufzeit-Pruefung mit kurzem `console.info`-Hinweis auf
 fremden Seiten).
 
+`chatbot.godelmann.bot` ist dabei ausschliesslich der **Script-/API-Host** —
+er ist selbst nie Einbett-Origin und muss nirgends als „Domain" der Website
+konfiguriert werden.
+
 **Staging-/Preview-Umgebungen der Agentur** werden auf Zuruf in die Allowlist
 aufgenommen: bitte die exakte(n) Origin(s) nennen (Schema + Host, ohne Pfad —
 z. B. `https://preview.example-agentur.dev`), dann wird die Freigabe
@@ -121,19 +237,40 @@ Seiten **nicht** auf `no-referrer` stellen — der Browser-Standard
 (`strict-origin-when-cross-origin`) genuegt. Auslieferungs-Pruefung und
 Seitenkontext (`page-url`) nutzen den Origin-Anteil des Referers.
 
+## Consent-Verwaltung (Usercentrics)
+
+godelmann.de nutzt Usercentrics mit **Smart Data Protector** (Auto-Blocking).
+Damit der Berater nicht faelschlich vor der Cookie-Einwilligung geblockt wird:
+
+- Die Script-Snippets dieser Doku tragen **`data-uc-allowed="true"`** — das
+  offizielle Usercentrics-Attribut, das das Auto-Blocking fuer dieses Script
+  ausnimmt. Ohne Usercentrics ist das Attribut wirkungslos (schadet nie).
+- Bitte den Berater in der Consent-Verwaltung **nicht als einwilligungspflichtigen
+  Dienst** markieren — sonst erscheint er erst nach Cookie-Einwilligung und waere
+  fuer die grosse Mehrheit der Besucher unsichtbar. Der Chat laeuft anonym auf
+  Godelmann-Infrastruktur (Details im Datenschutz-Abschnitt); die finale
+  Einstufung stimmen Agentur und Godelmann ab.
+
 ## Attribute
 
 Alle Attribute sind optional und **reaktiv** (Aenderung zur Laufzeit wirkt sofort).
 
 | Attribut | Werte | Default | Beschreibung |
 |---|---|---|---|
-| `lang` | `de`, `en` | `de` | Sprache der UI-Texte (Titel, Buttons, Fehlermeldungen, Begruessung). Unbekannte Werte fallen auf `de` zurueck. |
+| `lang` | `de`, `en`, `cs` | `de` | Einstiegssprache der UI-Texte (Titel, Buttons, Fehlermeldungen, Begruessung). Regionale Zusaetze werden abgeschnitten (`de-DE` -> `de`), `cz` gilt als Alias fuer `cs`; unbekannte/nicht freigeschaltete Werte fallen auf `de` zurueck. Die Sprachwahl des Besuchers im Chat hat Vorrang. |
 | `position` | `bottom-right`, `bottom-left` | `bottom-right` | Ecke, in der Bubble und Panel verankert sind (nur `mode="floating"`). |
 | `api-base` | URL-Origin | Origin der Script-URL | Basis-URL des Chatbot-Backends (`{api-base}/api/chat`, `{api-base}/altcha/challenge`). Nur setzen, wenn Widget-Script und API auf verschiedenen Hosts liegen. |
 | `greeting` | Freitext | Deutsche Standard-Begruessung | Eigene erste Assistenten-Nachricht beim Oeffnen des Panels. |
 | `mode` | `floating`, `drawer`, `page` | `floating` | Darstellungsform (s. o.). Unbekannte Werte fallen auf `floating` zurueck. |
 | `launcher` | `bubble`, `none` | `bubble` | `none` blendet die eigene Bubble aus; der Ausloeser ist dann Host-Markup mit `data-gdm-chat-launcher` (das Widget verdrahtet es automatisch, s. u.). |
 | `page-url` | Pfad/URL | `/chat` | Ziel des Vollbild-Wechsels aus dem Drawer (Punchout). |
+
+**Mehrsprachigkeit — `lang` je Seitensprache setzen:** godelmann.de ist
+zweisprachig (deutsche Seiten + `/en/...`). Das `lang`-Attribut bitte im
+Template dynamisch aus der Seitensprache befuellen — deutsche Seiten
+`lang="de"`, englische Seiten `lang="en"` —, damit der Berater in der Sprache
+der Seite startet. Der Besucher kann die Chat-Sprache danach jederzeit selbst
+umstellen (freigeschaltet: Deutsch, Englisch, Tschechisch).
 
 ## CSS-Custom-Properties (Theming)
 
@@ -142,94 +279,21 @@ ueber diese dokumentierten Custom Properties (z. B. am Element oder auf `:root`)
 
 | Property | Default | Beschreibung |
 |---|---|---|
-| `--gdm-chat-accent` | `#E54F35` (Godelmann Red 100) | Akzentfarbe: Bubble, Header, Nutzer-Nachrichten, Senden-Button, Links. |
+| `--gdm-chat-accent` | `#3F4549` (Anthrazit, seit 0.0.13) | Akzentfarbe: Bubble, Header, Nutzer-Nachrichten, Senden-Button, Links. |
+| `--gdm-chat-accent-hover` | `#2E3336` | Hover-/Aktiv-Ton der Akzentfarbe (Buttons, Launcher). |
 | `--gdm-chat-z-index` | `2147483000` | Stapelreihenfolge von Bubble und Panel. |
 | `--gdm-chat-font` | `inherit` (Seiten-Font) | Schriftfamilie des Widgets. |
 | `--gdm-chat-drawer-width` | `480px` | Breite des Seiten-Drawers (`mode="drawer"`). Muss mit der Breite in der Drawer-Support-CSS-Regel uebereinstimmen (s. u.). |
 
 ```css
 godelmann-chatbot {
-  --gdm-chat-accent: #E54F35;
+  --gdm-chat-accent: #3F4549;        /* Beispiel = Default; anpassbar */
+  --gdm-chat-accent-hover: #2E3336;
   --gdm-chat-z-index: 99999;
   --gdm-chat-font: "FF Meta Pro", sans-serif;
   --gdm-chat-drawer-width: 480px;
 }
 ```
-
-## Einbindung als Seiten-Drawer (Lieferpaket godelmann.de)
-
-Fuer godelmann.de wird das Widget als **rechter Seiten-Drawer** eingebunden, mit
-einem eigenen Ausloeser in der bestehenden Utility-Rail und einer Vollbild-Seite
-`/chat`. Die Einbindung ist **minimalinvasiv** — im Kern drei kleine Bausteine
-(Rail-Item, Widget-Tag, eine CSS-Regel) plus optional die CMS-Seite.
-
-### 1. Ausloeser in der Rail (statt eigener Bubble)
-
-Ein zusaetzliches Rail-Item mit dem Attribut `data-gdm-chat-launcher`. Das Widget
-verdrahtet es automatisch (Klick oeffnet/schliesst den Drawer, `aria-expanded`
-wird gespiegelt) — **kein Inline-JavaScript noetig** (CSP-freundlich).
-`href="/chat"` ist der Fallback ohne JavaScript. Icon frei waehlbar (hier
-vorlaeufig eine Sprechblase; Godelmanns eigenes Chat-Icon kann es ersetzen):
-
-```html
-<a data-gdm-chat-launcher href="/chat" aria-label="Chat-Berater oeffnen"
-   class="<gleiche Klassen wie die uebrigen Rail-Items>">
-  <!-- Icon (SVG oder Icon-Font wie die anderen Rail-Items) -->
-  <span class="hidden md:inline">Chat-Berater</span>
-</a>
-```
-
-### 2. Das Widget selbst (Drawer-Modus)
-
-```html
-<script type="module" src="https://chatbot.godelmann.bot/chatbot-widget.v1.js"></script>
-<godelmann-chatbot mode="drawer" launcher="none" page-url="/chat"></godelmann-chatbot>
-```
-
-### 3. GENAU EINE CSS-Regel
-
-Der Drawer schiebt den Seiteninhalt ueber einen `margin-right` am `<html>` (setzt
-das Widget selbst, inkl. Marker-Klasse `gdm-chat-drawer-open`). **Fest
-positionierte** Elemente (Header und Rail) folgen einem html-`margin` nicht —
-diese eine Regel zieht sie mit (mit `right`, **nicht** `transform`, sonst bricht
-die Rail-Mechanik):
-
-```css
-html.gdm-chat-drawer-open [data-header] header,
-html.gdm-chat-drawer-open div[data-inject="frm-utility-nav"] {
-  right: var(--gdm-chat-drawer-width, 480px);
-  transition: right .8s ease;
-}
-```
-
-Die Selektoren gelten fuer die heutige godelmann.de-Struktur (`[data-header] header`
-= Kopf, `div[data-inject="frm-utility-nav"]` = Rail). Aendert sich das Markup, nur
-diese eine Regel anpassen.
-
-### 4. Vollbild-Seite `/chat` (CMS, optional aber empfohlen)
-
-Eine eigene Seite (Route `/chat`, im normalen Header/Footer-Stil), die den Berater
-in einen **hoehen-gebenden Container** setzt:
-
-```html
-<div style="height:min(78vh,780px); min-height:480px;">
-  <godelmann-chatbot mode="page" page-url="/chat"
-    style="display:block; width:100%; height:100%;"></godelmann-chatbot>
-</div>
-<script type="module" src="https://chatbot.godelmann.bot/chatbot-widget.v1.js"></script>
-```
-
-Drawer und Seite teilen dieselbe Unterhaltung (gleiche Origin, gleicher
-`sessionStorage`): Punchout aus dem Drawer oeffnet `/chat`, „Verkleinern" fuehrt
-zurueck.
-
-> **Mobil:** Auf kleinen Displays wird der Drawer automatisch zum
-> Vollflaechen-Panel (kein Schieben) — nichts weiter zu tun.
->
-> **Demo ohne Agentur:** Der Godelmann-Proxy (`test.godelmann.net`) injiziert die
-> Bausteine 1+3 bereits selbst und setzt das Widget in den Drawer-Modus — dort ist
-> die komplette Einbindung ohne CMS-Aenderung sichtbar (Punchout auf
-> `test.godelmann.net/chat`).
 
 ## Events
 
