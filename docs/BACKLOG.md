@@ -1,6 +1,25 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-04 (Paket-Version **0.0.15**, test)
+> Stand: 2026-08-18 (Paket-Version **0.0.17**, test+prod)
+
+## Release 0.0.17 (2026-08-18)
+
+- **Uebergangsmodus Wirt-Pruefung**: Laufzeit-Selbstcheck per Schalter
+  `WIRT_PRUEFUNG_AKTIV=false` deaktiviert, damit Salient auf ihren Testsystemen
+  sofort einbinden kann; Scharfschalten zusammen mit dem Caddy-Origin-Gate nach
+  Meldung der Salient-Domains (Task #117). Konsolen-Hinweis ohne Firmen-/
+  Kontaktnennung. EINBINDUNG.md v1.2->v1.3 (Salient-Haertung: Ziel-Einbindung
+  Drawer wortgleich zur Proxy-Referenz, data-uc-allowed in allen Snippets +
+  Usercentrics-Abschnitt, lang je Seitensprache + cs, Akzent-Defaults
+  3F4549/2E3336 gemessen, Live-Vorschau + Chat-Icon-SVG).
+
+## Release 0.0.16 (2026-08-18)
+
+- **Laufzeit-Selbstcheck autorisierte Wirt-Domains** (`istAutorisierterHost`):
+  Widget initialisiert nur auf godelmann.de/.com/.net/.bot (+Subdomains,
+  localhost) — defense-in-depth; wirksamer Schutz ist das Origin-Gate am
+  Server (chatbot.godelmann.bot, Caddy godelmann-prod). EINBINDUNG.md v1.2
+  (Agentur-Host, Autorisierte Domains, CSP-Absatz).
 > Maintainer: Dietmar Scharf
 
 ## Releases
