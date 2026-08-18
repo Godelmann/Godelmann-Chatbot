@@ -22,7 +22,7 @@ Zwei Stages, geteilte Godelmann-App-Server (dieselbe Infrastruktur wie GoCreate)
 | **Widget (ES-Modul)** | beide | Browser (Client) | `<godelmann-chatbot>` Custom Element + Shadow DOM; laedt sich per `<script type=module src=.../chatbot-widget.v1.js>` in die godelmann.de-Seite; kein Framework, keine externen Ressourcen |
 | **godelmann-chatbot-server** | je Stage | `:3011` (SPASS, Rust; `Ramteid-GmbH/spass` `examples/`) | HTTP-API `POST /api/chat` (SSE) + `GET /altcha/challenge`; ALTCHA-Verify + IP-Rate-Limit; reicht an DGX weiter (Bearer server-side) |
 | **platform-test** | **test** | `10.0.0.4` (privat, nbg1) / public `162.55.51.254` | `godelmann-chatbot.service` :3011 + Caddy-vhost `chatbot-test.godelmann.net` (LE-Cert). Geteilt mit GoCreate/Gravelli Test |
-| **godelmann-prod** | **prod** | `49.12.77.51` (fsn1) | `godelmann-chatbot.service` :3011 + Caddy-vhost `chatbot.godelmann.net` |
+| **godelmann-prod** | **prod** | `49.12.77.51` (fsn1) | `godelmann-chatbot.service` :3011 + Caddy-vhosts `chatbot.godelmann.net` und **`chatbot.godelmann.bot`** (Agentur-Host Salient seit 18.08. — hartes Origin-Gate godelmann.de/.com, Hotlink-Gate aufs Widget-JS; Zone godelmann.bot auf Cloudflare-NS, Apex zeigt auf den db-cert-Server mit der Ramteid-Agent-Landing und gehoert NICHT zu diesem Dienst) |
 | **DGX-Gateway** | shared | `dgx.spass.fun` (Hetzner-LB direkt, **kein Cloudflare**) | `/c1/chat` Modell `godelmann-gocreate-private-qwen-text` (lokal) + auto-injiziertes `knowledge_search` (Godelmann-RAG-KB); Bearer-gated + Pflicht-Header `SPASS-User-Id` (dgx ADR-0016) |
 | **control** (Sprungbrett) | ops | `control.cockpit.plus` → `178.104.35.116` | 2-Hop-Jump-Host zu beiden App-Servern; traegt die Server-Keys (`/root/.ssh/{platform,godelmann-prod}`) |
 
@@ -56,6 +56,7 @@ auf `platform-test` bzw. `godelmann-prod`; dorthin liefert `deploy-godelmann.sh 
 | Stage | Oeffentliche URL (Modul-Host = API-Host) | API-Endpunkte | Auth-Gate | Ziel |
 |---|---|---|---|---|
 | **prod** | `https://chatbot.godelmann.net` | `POST /api/chat` (SSE) · `GET /altcha/challenge` · `GET /chatbot-widget.v1.js` | keins (anonym, ALTCHA+Rate-Limit) | `godelmann-prod` `godelmann-chatbot.service` :3011 |
+| **prod (Agentur)** | `https://chatbot.godelmann.bot` | wie prod — zusaetzlich HARTES Origin-Gate (403 auf `/api/*`+`/altcha/*` bei fremdem Origin; Allowlist godelmann.de/.com www+apex, Salient-Staging auf Zuruf) + Hotlink-Gate `chatbot-widget.v1.js` (fremder Referer 403, fehlender liefert aus); ES-Module-CORS gated das JS zusaetzlich hart | keins (anonym, ALTCHA+Rate-Limit) | derselbe Dienst :3011, eigener Caddy-vhost (18.08.) |
 | **test** | `https://chatbot-test.godelmann.net` | wie prod | wie prod | `platform-test` `godelmann-chatbot.service` :3011 |
 
 **Einbettungs-Snippet (Agentur, `docs/EINBINDUNG.md`):**
