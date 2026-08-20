@@ -93,20 +93,31 @@ const SCRIPT_ORIGIN: string = (() => {
 
 const AUTORISIERTE_WIRT_DOMAINS: readonly string[] = [
   'godelmann.de', 'godelmann.com', 'godelmann.net', 'godelmann.bot',
+  // Salient-Entwicklung (Meldung 19.08. via Heike, Entscheid Dietmar 20.08.):
+  'god--ibexa.ddev.site',
 ];
 
-/** UEBERGANG (18.08., Entscheid Dietmar): Pruefung DEAKTIVIERT, damit die
- *  Agentur auf ihren Testsystemen sofort einbinden kann. Nach Meldung der
- *  Salient-Testdomains: Domains oben ergaenzen und auf `true` schalten
- *  (im selben Zug das Caddy-Origin-Gate scharf schalten — s.
- *  platform-control Caddyfile, chatbot.godelmann.bot-Block). */
-const WIRT_PRUEFUNG_AKTIV = false;
+/** Host-SUFFIXE ohne Punkt-Grenze — Salients Platformsh-Vorschauserver
+ *  heissen `<git-branch>-walegqvpxiy74.de-2.platformsh.site` (Projekt-Id im
+ *  Namen = auf deren Projekt gescopt; die Subdomains vergibt Platform.sh). */
+const AUTORISIERTE_WIRT_SUFFIXE: readonly string[] = [
+  '-walegqvpxiy74.de-2.platformsh.site',
+];
 
-/** Ist `hostname` eine autorisierte Wirt-Domain (exakt oder Subdomain) bzw.
- *  eine lokale Entwicklungsumgebung? Pure Funktion, unit-testbar. */
+/** SCHARF seit 20.08. (Entscheid Dietmar; Uebergangs-Offenphase 18.-20.08.
+ *  beendet): Salient-Domains sind gemeldet und oben eingetragen — im selben
+ *  Zug wurde das Caddy-Origin-Gate aktiviert (godelmann-prod
+ *  /etc/caddy/Caddyfile, Block chatbot.godelmann.bot). Neue Agentur-Domains
+ *  brauchen BEIDE Stellen. */
+const WIRT_PRUEFUNG_AKTIV = true;
+
+/** Ist `hostname` eine autorisierte Wirt-Domain (exakt oder Subdomain),
+ *  ein autorisierter Suffix (Platformsh-Previews) bzw. eine lokale
+ *  Entwicklungsumgebung? Pure Funktion, unit-testbar. */
 export function istAutorisierterHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return true;
+  if (AUTORISIERTE_WIRT_SUFFIXE.some((suffix) => host.endsWith(suffix))) return true;
   return AUTORISIERTE_WIRT_DOMAINS.some(
     (domain) => host === domain || host.endsWith(`.${domain}`),
   );
