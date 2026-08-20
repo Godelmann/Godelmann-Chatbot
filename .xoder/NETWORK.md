@@ -56,7 +56,7 @@ auf `platform-test` bzw. `godelmann-prod`; dorthin liefert `deploy-godelmann.sh 
 | Stage | Oeffentliche URL (Modul-Host = API-Host) | API-Endpunkte | Auth-Gate | Ziel |
 |---|---|---|---|---|
 | **prod** | `https://chatbot.godelmann.net` | `POST /api/chat` (SSE) · `GET /altcha/challenge` · `GET /chatbot-widget.v1.js` | keins (anonym, ALTCHA+Rate-Limit) | `godelmann-prod` `godelmann-chatbot.service` :3011 |
-| **prod (Agentur)** | `https://chatbot.godelmann.bot` | wie prod — zusaetzlich HARTES Origin-Gate (403 auf `/api/*`+`/altcha/*` bei fremdem Origin; Allowlist godelmann.de/.com www+apex, Salient-Staging auf Zuruf) + Hotlink-Gate `chatbot-widget.v1.js` (fremder Referer 403, fehlender liefert aus); ES-Module-CORS gated das JS zusaetzlich hart | keins (anonym, ALTCHA+Rate-Limit) | derselbe Dienst :3011, eigener Caddy-vhost (18.08.) |
+| **prod (Agentur)** | `https://chatbot.godelmann.bot` | wie prod — zusaetzlich HARTES Origin-Gate (403 auf `/api/*`+`/altcha/*` bei fremdem Origin; SCHARF seit 20.08.; Allowlist godelmann.de/.com www+apex + Salient: localhost:8000, god--ibexa.ddev.site, Suffix *-walegqvpxiy74.de-2.platformsh.site) + Hotlink-Gate `chatbot-widget.v1.js` (fremder Referer 403, fehlender liefert aus); ES-Module-CORS gated das JS zusaetzlich hart | keins (anonym, ALTCHA+Rate-Limit) | derselbe Dienst :3011, eigener Caddy-vhost (18.08.) |
 | **test** | `https://chatbot-test.godelmann.net` | wie prod | wie prod | `platform-test` `godelmann-chatbot.service` :3011 |
 
 **Einbettungs-Snippet (Agentur, `docs/EINBINDUNG.md`):**

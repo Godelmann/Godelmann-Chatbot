@@ -1,6 +1,26 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-18 (Paket-Version **0.0.17**, test+prod)
+> Stand: 2026-08-20 (Paket-Version **0.0.18**, test+prod)
+
+## Release 0.0.18 (2026-08-20)
+
+- **Wirt-Pruefung SCHARF + Salient-Domains autorisiert** (Task #117 erledigt):
+  Salient meldete 19.08. via Heike ihre Umgebungen — ddev
+  (`god--ibexa.ddev.site`) als Domain, Platformsh-Previews
+  (`<branch>-walegqvpxiy74.de-2.platformsh.site`) als projekt-gescopter
+  SUFFIX (neue Liste `AUTORISIERTE_WIRT_SUFFIXE` — endsWith ohne
+  Punkt-Grenze, die Subdomains vergibt Platform.sh nur an deren Projekt);
+  `localhost` war schon immer erlaubt (Entscheid: dauerhaft).
+  `WIRT_PRUEFUNG_AKTIV=true`; im selben Zug das Caddy-Origin-Gate auf
+  chatbot.godelmann.bot scharf (godelmann-prod, Sicherung
+  `Caddyfile.bak-20260820-salient-gate`). CADDY-FALLE dabei: der
+  `header Origin v1 v2 ...`-Matcher mit MEHREREN Werten matchte NICHT als
+  OR (alle erlaubten Origins bekamen 403, gemessen) -> `header_regexp`;
+  ausserdem OPTIONS vom API-Gate ausgenommen (Preflight-Handle kam sonst
+  nie dran). Verifikation: 12er-curl-Matrix (alle erlaubten 200 inkl.
+  Branch-Wildcard, fremde/http/fremdes-Platformsh-Projekt/Suffix-Trick 403,
+  ohne Origin 200, Preflight 204, ACAO nur fuer Erlaubte).
+  EINBINDUNG.md §Autorisierte Domains auf den Scharf-Stand.
 
 ## Release 0.0.17 (2026-08-18)
 

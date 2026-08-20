@@ -204,33 +204,37 @@ beide Formen sind gleichwertig nutzbar.
 
 ## Autorisierte Domains
 
-> **Uebergangsphase:** Fuer die Integrationsphase ist die Domain-Pruefung
-> voruebergehend deaktiviert — die Einbindung funktioniert damit auch auf den
-> Testsystemen der Agentur sofort. Bitte kurzfristig die Liste der
-> Test-/Staging-Domains mitteilen (Schema `https://hostname`, ohne Pfad);
-> danach wird die Pruefung mit diesen Domains scharf geschaltet.
-
+> **Pruefung SCHARF seit 20.08.2026** (Salient-Domains gemeldet 19.08. via
+> Frau Sturm). Die Uebergangs-Offenphase (18.-20.08.) ist beendet — auf
+> nicht gelisteten Domains antwortet die Chat-API jetzt mit 403.
 
 Auslieferung des Widgets **und** alle Chat-APIs sind serverseitig auf
-autorisierte Godelmann-Domains beschraenkt:
+autorisierte Domains beschraenkt:
 
 - `https://www.godelmann.de` · `https://godelmann.de`
 - `https://www.godelmann.com` · `https://godelmann.com`
+- **Salient-Entwicklung:** `https://localhost:8000` ·
+  `https://god--ibexa.ddev.site`
+- **Salient-Vorschauserver:** `https://<git-branch>-walegqvpxiy74.de-2.platformsh.site`
+  — als Muster freigeschaltet (jede Branch-Vorschau des Platformsh-Projekts
+  funktioniert automatisch, inkl. `release-stage-…`); keine Einzelmeldung
+  je Branch noetig.
 
 Technisch heisst das: Die API-Endpunkte pruefen den `Origin`-Header
 (Allowlist am Server) — auf fremden Domains antwortet der Chat mit 403 und
 funktioniert nicht. Zusaetzlich initialisiert sich das Widget nur auf
-Godelmann-Domains (Laufzeit-Pruefung mit kurzem `console.info`-Hinweis auf
-fremden Seiten).
+autorisierten Domains (Laufzeit-Pruefung mit kurzem `console.info`-Hinweis
+auf fremden Seiten; `localhost`/`127.0.0.1` sind fuer lokale Entwicklung
+immer erlaubt).
 
 `chatbot.godelmann.bot` ist dabei ausschliesslich der **Script-/API-Host** —
 er ist selbst nie Einbett-Origin und muss nirgends als „Domain" der Website
-konfiguriert werden.
+konfiguriert werden. (`godelmann.de` leitet auf `.com` weiter — beide
+bleiben dennoch freigeschaltet, damit auch die Redirect-Quelle sauber ist.)
 
-**Staging-/Preview-Umgebungen der Agentur** werden auf Zuruf in die Allowlist
-aufgenommen: bitte die exakte(n) Origin(s) nennen (Schema + Host, ohne Pfad —
-z. B. `https://preview.example-agentur.dev`), dann wird die Freigabe
-eingerichtet und kurz bestaetigt.
+**Weitere Umgebungen** werden auf Zuruf in die Allowlist aufgenommen:
+bitte die exakte(n) Origin(s) nennen (Schema + Host, ohne Pfad), dann wird
+die Freigabe eingerichtet und kurz bestaetigt.
 
 **Hinweis Referrer-Policy:** Bitte die Referrer-Policy der einbindenden
 Seiten **nicht** auf `no-referrer` stellen — der Browser-Standard
