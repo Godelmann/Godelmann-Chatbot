@@ -77,3 +77,13 @@
 - **[Org / Godelmann]** Standardausstattungs-Policy: jedes Godelmann-Frontend braucht `docs/`-Doku +
   adaptierten `do-everything`-Skill (Memory `projekt-standardausstattung-policy`) — Ausrollstand fuer
   Godelmann-Chatbot pruefen (do-everything-Skill fuer dieses Repo noch nicht belegt), gehoert in `Godelmann/.xoder/`.
+
+## Drawer-UI-Feinabstimmung mit Godelmann (aus Salient-Antwort 20.08.)
+
+- [ ] Salient wurde zugesagt (E-Mail Dietmar 20.08., 12:06): ob der Drawer den
+      Seiteninhalt weiter MITSCHIEBT (heutiges Zielbild, margin-right am html)
+      oder sich kuenftig UEBERLAGERT (wie Salients Hamburger-Menue), wird mit
+      Godelmann abgestimmt; "UI-Feinschliff kommt noch". Falls Overlay
+      gewuenscht: v1-kompatible Widget-Erweiterung (optionales Attribut,
+      applyHostPush unterdruecken). Ansprechpartner-Lage: Heike im Urlaub bis
+      Anfang September, Kommunikation direkt Dietmar<->Salient (Murat Fidanli).
