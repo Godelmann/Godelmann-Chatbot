@@ -230,7 +230,11 @@ autorisierte Domains beschraenkt:
 - **Salient-Vorschauserver:** `https://<git-branch>-walegqvpxiy74.de-2.platformsh.site`
   — als Muster freigeschaltet (jede Branch-Vorschau des Platformsh-Projekts
   funktioniert automatisch, inkl. `release-stage-…`); keine Einzelmeldung
-  je Branch noetig.
+  je Branch noetig. **Konkrete Staging-Umgebung der Agentur (Heike/Salient,
+  19.08.2026):** `https://release-stage-n72lepa-walegqvpxiy74.de-2.platformsh.site/`
+  — dort ist der Chat seit 19.08. eingebaut (Sichtpruefung der Einbindung hier,
+  nicht nur auf test.godelmann.net). Stand 06.09. 15:20: Platformsh antwortet
+  dort mit 503 „Back-end server is faulty or not available" (Agentur-Seite).
 
 Technisch heisst das: Die API-Endpunkte pruefen den `Origin`-Header
 (Allowlist am Server) — auf fremden Domains antwortet der Chat mit 403 und
