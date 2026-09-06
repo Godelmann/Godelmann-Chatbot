@@ -1060,7 +1060,7 @@ const STYLE = /* css */ `
 
   /* --- Feedback-Leiste (QS): kleine, dezente Daumen-/Kommentar-Knoepfe
      unter jeder fertigen Assistent-Antwort (Vorbild .msg .retry). --- */
-  .fb { display: flex; gap: 4px; margin-top: 8px; }
+  .fb { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
   .fb button {
     display: inline-flex; align-items: center; justify-content: center; gap: 5px;
     border: 1px solid #E2E3E3; background: #fff; color: #656A6D;
