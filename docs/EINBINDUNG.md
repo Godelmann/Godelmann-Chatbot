@@ -33,6 +33,8 @@
 > Kopfzeile grau mit G-Avatar, Titel „Ihr KI-Berater" und nur noch Reset (↺) + Schliessen (X) —
 > die Knoepfe „Vollbild"/„Verkleinern" gibt es nicht mehr (Drawer und `/chat`-Seite teilen die
 > Unterhaltung weiter ueber `sessionStorage`; der Wechsel geschieht ueber die Seiten-Navigation).
+> Ansprechpartner-Suche (Fachkunde): PLZ, bei mehrdeutiger PLZ Land-Auswahl per Chips; Daten aus
+> der NAV-Liste von GODELMANN (Pflege in GoCreate → Kontaktdaten, seit 0.0.21).
 > Vor dem ersten Kontakt steht eine Zustimmungskarte „Nutzungsbedingungen" (Chat starten /
 > Abbrechen); bis dahin sendet das Widget nichts. Unter dem Eingabefeld zwei Hinweiszeilen mit
 > Links auf Kontaktformular und Datenschutz (je Sprache). Akzent = Website-Rot `#E54F35`.

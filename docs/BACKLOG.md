@@ -1,6 +1,16 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-06 (Paket-Version **0.0.20**, test UND prod seit 15:09 Uhr; Sicherung 20260906-130900)
+> Stand: 2026-09-06 (Paket-Version **0.0.21**, test; prod 0.0.20 seit 15:09 Uhr)
+
+## Release 0.0.21 (2026-09-06)
+
+- **Ansprechpartner aus der NAV-Liste mit Land:** `GET /api/contact?plz=&land=` loest ueber
+  GoCreate (`webchat_kontakt_lookup`) auf; liegt die PLZ in mehreren Laendern (1010 = Wien und
+  Lausanne) und kein Land ist bekannt, fragt der Bot per Chips nach (Laendernamen in Chat-Sprache),
+  die Wahl loest die Suche mit Land erneut aus; Eingaben wie `AT-1010` zerlegt der Server. Antwort:
+  Name, „Vertrieb, Werk <Werk>", Region (Ort), Telefon, E-Mail. Neuer Text `contactCountryPrompt`
+  (de/en/cs), Sitzungsfeld `pendingPlz`. Sichtpruefung test.godelmann.net: 1010 → Oesterreich →
+  Ralf Sandner, Werk Maitenbeth.
 
 ## Release 0.0.20 (2026-09-06)
 
