@@ -505,7 +505,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
         ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?',
       },
       {
-        label: 'Inspirationen fuer Garten & Terrasse',
+        label: 'Inspirationen für Garten & Terrasse',
         frage: 'Wo finde ich Inspirationen für Garten und Terrasse?',
         linkKey: 'inspirationen',
         ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.',
@@ -534,7 +534,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
         special: 'vergleich',
       },
       {
-        label: 'Haendlersuche',
+        label: 'Händlersuche',
         frage: 'Wie finde ich einen Händler in meiner Nähe?',
         linkKey: 'haendlersuche',
         ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?',
@@ -771,7 +771,7 @@ interface ContactAntwort {
 }
 
 const PLZ_PROMPT: SprachTabelle<string> = {
-  de: 'Bitte geben Sie Ihre Postleitzahl ein, dann nenne ich Ihnen Ihren zustaendigen Ansprechpartner.',
+  de: 'Bitte geben Sie Ihre Postleitzahl ein, dann nenne ich Ihnen Ihren zuständigen Ansprechpartner.',
   en: 'Please enter your postal code and I will name your responsible contact person.',
   cs: 'Zadejte prosím své PSČ a já vám sdělím vašeho odpovědného kontaktního partnera.',
 };
