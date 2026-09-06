@@ -45,6 +45,9 @@ interface StoredMessage {
   /** Chat-Sprache dieser Nachricht (Mehrsprachigkeit 04.08.) — historisch
    *  korrekt je Antwort; Alt-Sitzungen ohne Feld laden weiter. */
   lang?: string;
+  /** Effektives Modell dieser Assistent-Antwort (Header `x-model-used`,
+   *  nur Testumgebung; dgx CR-0033). */
+  modell?: string;
 }
 
 interface StoredSession {
@@ -59,6 +62,9 @@ interface StoredSession {
   /** Explizit gewaehlte Chat-Sprache (Flagge/Geo-Chip) — Vorrang vor dem
    *  `lang`-Attribut der Website. Fehlt = keine Wahl getroffen. */
   chatLang?: string;
+  /** Test-only: je Chat gewaehltes Modell (Slug aus `modelle_waehlbar`);
+   *  fehlt = Standardmodell des Servers (dgx CR-0033). */
+  modell?: string;
   draft: string;
   /** Cursor-/Auswahlposition — sonst springt der Cursor ans Ende. */
   cursor?: { start: number; end: number };
@@ -226,6 +232,11 @@ interface Texts {
   fbCommentShort: string;
   fbCancel: string;
   fbYourComment: string;
+  /** Test-only Modellwahl je Chat (Gehirn-Symbol in der Feedback-Zeile) */
+  fbModel: string;
+  fbModelShort: string;
+  modelMenuHint: string;
+  modelDefault: string;
   /** Sprachumschaltung (Flagge in der Feedback-Zeile + Menue) */
   langMenu: string;
   /** Kuratierte Link-Antwort („Gerne — hier entlang: …") */
@@ -278,6 +289,10 @@ const TEXTS: SprachTabelle<Texts> = {
     fbUpShort: 'Hilfreich',
     fbDownShort: 'Nicht hilfreich',
     fbCommentShort: 'Kommentar',
+    fbModel: 'Modell wählen (nur Testumgebung)',
+    fbModelShort: 'Modell',
+    modelMenuHint: 'Nur auf der Testumgebung — produktiv antwortet immer das Standardmodell.',
+    modelDefault: 'Standard',
     langMenu: 'Antwortsprache wählen',
     hereYouGo: 'Gerne — hier entlang',
     contactLooking: 'Einen Moment, ich suche Ihren Ansprechpartner …',
@@ -328,6 +343,10 @@ const TEXTS: SprachTabelle<Texts> = {
     fbUpShort: 'Helpful',
     fbDownShort: 'Not helpful',
     fbCommentShort: 'Comment',
+    fbModel: 'Choose model (test environment only)',
+    fbModelShort: 'Model',
+    modelMenuHint: 'Test environment only — production always answers with the default model.',
+    modelDefault: 'Default',
     langMenu: 'Choose reply language',
     hereYouGo: 'Here you go',
     contactLooking: 'One moment, looking up your contact …',
@@ -377,6 +396,10 @@ const TEXTS: SprachTabelle<Texts> = {
     fbUpShort: 'Užitečné',
     fbDownShort: 'Neužitečné',
     fbCommentShort: 'Komentář',
+    fbModel: 'Zvolit model (pouze testovací prostředí)',
+    fbModelShort: 'Model',
+    modelMenuHint: 'Pouze v testovacím prostředí — v produkci odpovídá vždy výchozí model.',
+    modelDefault: 'Výchozí',
     langMenu: 'Zvolit jazyk odpovědí',
     hereYouGo: 'Tudy prosím',
     contactLooking: 'Okamžik, hledám vašeho kontaktního partnera …',
@@ -1091,6 +1114,8 @@ const STYLE = /* css */ `
   .langmenu .langitem:hover { background: #ECEDED; }
   .langmenu .langitem[aria-checked="true"] { font-weight: 700; }
   .langmenu .langitem:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
+  /* Hinweiszeile im Modellmenue (test-only, dgx CR-0033) */
+  .menu-hint { padding: 4px 10px; font-size: 11px; color: #656A6D; }
   .langdivider {
     align-self: center; margin: 2px 0; padding: 3px 12px;
     border: 1px solid #E2E3E3; border-radius: 999px; background: #fff;
@@ -1213,6 +1238,9 @@ const FB_ICON_DOWN = `
   <svg ${ICON_ATTRS}><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`;
 const FB_ICON_COMMENT = `
   <svg ${ICON_ATTRS}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+/** lucide "brain" — Modellwahl (nur Testumgebung, dgx CR-0033). */
+const FB_ICON_BRAIN = `
+  <svg ${ICON_ATTRS}><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>`;
 
 // ---------------------------------------------------------------------------
 // Custom Element
@@ -1239,6 +1267,8 @@ interface MessageEntry {
   comment?: string;
   /** Chat-Sprache zum Zeitpunkt dieser Nachricht (historisch je Antwort). */
   lang?: string;
+  /** Effektives Modell dieser Antwort (`x-model-used`, nur Testumgebung). */
+  modell?: string;
   /** Nur Laufzeit (bewusst NICHT serialisiert): schon an /api/qs/transcript
    *  gemeldet? Nach restoreSession wieder false — Nachsenden ist idempotent
    *  (Server dedupliziert je (sitzung_id, message_id)) = self-healing. */
@@ -1292,6 +1322,14 @@ export class GodelmannChatbot extends HTMLElement {
   // Administrierbare Link-Ziele (GET /api/webchat-config): linkKey -> URL.
   private links: Record<string, string> = {};
   private configLoaded = false;
+  /** Test-only Modellwahl (dgx CR-0033): Liste aus `webchat-config.modelle_waehlbar`
+   *  (produktiv leer = keine Testwerkzeuge), Server-Standard, Wahl je Chat. */
+  private modelleWaehlbar: string[] = [];
+  private modellStandard = 'gpt-5.6';
+  private modell: string | null = null;
+  /** Testwerkzeuge (Kommentar-Knopf + Modellwahl) nur, wenn der Server
+   *  waehlbare Modelle meldet — auf prod bleibt die Liste leer. */
+  private get testWerkzeugeAktiv(): boolean { return this.modelleWaehlbar.length > 0; }
   /** Waehrend des Wiederherstellens NICHT zurueckspeichern (sonst schreibt
    *  das Aufbauen des Verlaufs den gerade gelesenen Stand halbfertig um). */
   private restoring = false;
@@ -1342,6 +1380,10 @@ export class GodelmannChatbot extends HTMLElement {
   private langMenuAnchor: HTMLButtonElement | null = null;
   /** Outside-Click-Schliesser des Sprachmenues (Referenz zum Abmelden). */
   private langMenuOutside: ((e: Event) => void) | null = null;
+  /** Offenes Modellmenue (Klon des Sprachmenues) + Ausloeser + Aussenklick. */
+  private modelMenuEl: HTMLDivElement | null = null;
+  private modelMenuAnchor: HTMLButtonElement | null = null;
+  private modelMenuOutside: ((e: Event) => void) | null = null;
 
   constructor() {
     super();
@@ -1447,8 +1489,9 @@ export class GodelmannChatbot extends HTMLElement {
     // Wirt-Gate: nie initialisiert -> nichts aufzuraeumen (und kein Zugriff
     // auf nie gebaute DOM-Referenzen).
     if (this.wirtGesperrt) return;
-    // Offenes Sprachmenue schliessen (raeumt auch den document-Listener).
+    // Offene Menues schliessen (raeumt auch die document-Listener).
     this.closeLangMenu(false);
+    this.closeModelMenu(false);
     this.abortCtrl?.abort();
     if (this.curatedTimer !== null) {
       window.clearTimeout(this.curatedTimer);
@@ -1500,12 +1543,14 @@ export class GodelmannChatbot extends HTMLElement {
         ...(m.rating ? { rating: m.rating } : {}),
         ...(m.comment ? { comment: m.comment } : {}),
         ...(m.lang ? { lang: m.lang } : {}),
+        ...(m.modell ? { modell: m.modell } : {}),
       })),
       stage: this.stage,
       awaitingPlz: this.awaitingPlz,
       ...(this.zielgruppeGefragt ? { zielgruppeGefragt: true } : {}),
       ...(this.sitzungId ? { sitzungId: this.sitzungId } : {}),
       ...(this.chatLang ? { chatLang: this.chatLang } : {}),
+      ...(this.modell ? { modell: this.modell } : {}),
       draft: el?.value ?? '',
       ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
       ...(this.inputFocused ? { focused: true } : {}),
@@ -1561,6 +1606,7 @@ export class GodelmannChatbot extends HTMLElement {
           ...(m.rating === 1 || m.rating === -1 ? { rating: m.rating } : {}),
           ...(typeof m.comment === 'string' && m.comment !== '' ? { comment: m.comment } : {}),
           ...(typeof m.lang === 'string' && istChatSprache(m.lang) ? { lang: m.lang } : {}),
+          ...(typeof m.modell === 'string' && m.modell !== '' ? { modell: m.modell } : {}),
         };
         if (m.role === 'error') {
           // ueber appendErrorMessage, damit der "Erneut versuchen"-Knopf mitkommt
@@ -1573,6 +1619,11 @@ export class GodelmannChatbot extends HTMLElement {
       this.awaitingPlz = s.awaitingPlz === true;
       // Alte Sitzungen (vor v0.0.9) kennen das Feld nicht -> false.
       this.zielgruppeGefragt = s.zielgruppeGefragt === true;
+      // Modellwahl je Chat (test-only): vorlaeufig uebernehmen; loadConfig
+      // verwirft sie, sobald die Liste bekannt ist und den Slug nicht fuehrt.
+      this.modell = typeof s.modell === 'string' && s.modell !== ''
+        && (this.modelleWaehlbar.length === 0 || this.modelleWaehlbar.includes(s.modell))
+        ? s.modell : null;
       // Passende Auswahl-Schaltflaechen wieder anbieten, sonst haengt das
       // Gespraech ohne Weiterweg fest.
       if (!this.awaitingPlz) this.showSuggestions([]);
@@ -1980,6 +2031,9 @@ export class GodelmannChatbot extends HTMLElement {
     this.sendBtn.disabled = false;
     lsRemove(LS_CONVERSATION_KEY);
     ssRemove(SS_SESSION_KEY);
+    // Die Modellwahl gilt je Chat — endet mit ihm.
+    this.modell = null;
+    this.closeModelMenu(false);
     // Auch den Entwurf verwerfen: sonst schreibt der naechste saveSession()
     // den alten Text sofort wieder in den Speicher - "Neue Unterhaltung"
     // waere dann keine.
@@ -2239,7 +2293,25 @@ export class GodelmannChatbot extends HTMLElement {
       const data = (await res.json()) as {
         links?: { link_key?: string; url?: string }[];
         geo?: { country?: string; langs?: string[] } | null;
+        modelle_waehlbar?: unknown;
+        modell_standard?: unknown;
       };
+      // Test-only Modellwahl (dgx CR-0033): nur String-Slugs, dedupliziert,
+      // max. 8; prod liefert [] -> keine Testwerkzeuge.
+      const rohModelle = Array.isArray(data.modelle_waehlbar) ? data.modelle_waehlbar : [];
+      this.modelleWaehlbar = [...new Set(
+        rohModelle.filter((m): m is string => typeof m === 'string' && m.trim() !== ''),
+      )].slice(0, 8);
+      if (typeof data.modell_standard === 'string' && data.modell_standard !== '') {
+        this.modellStandard = data.modell_standard;
+      }
+      if (this.modell && !this.modelleWaehlbar.includes(this.modell)) {
+        this.modell = null;
+        this.saveSession();
+      }
+      // Bestehende Feedback-Leisten um die Testwerkzeuge ergaenzen (die
+      // Leisten wurden ggf. vor dem Config-Laden gebaut).
+      this.refreshFeedbackBars();
       for (const l of data.links ?? []) {
         if (l.link_key && l.url) this.links[l.link_key] = l.url;
       }
@@ -2470,6 +2542,8 @@ export class GodelmannChatbot extends HTMLElement {
     // den Server den Zusammenfassungs-Turn selbst bauen (keine Injection).
     const body: Record<string, unknown> = { message, hp_website: '', lang: this.langKey };
     if (wechsel) body.language_switch = true;
+    // Test-only Modellwahl (Server prueft gegen seine Whitelist).
+    if (this.modell) body.modell = this.modell;
     const conversationId = lsGet(LS_CONVERSATION_KEY);
     if (conversationId) body.conversation_id = conversationId;
     const altcha = await this.takeAltcha();
@@ -2512,12 +2586,22 @@ export class GodelmannChatbot extends HTMLElement {
           throw new ChatError('captcha', 'captcha rejected');
         }
         if (code === 'invalid_message') throw new ChatError('invalid_message', 'invalid message');
+        if (code === 'model_not_allowed') {
+          // Wahl ist serverseitig nicht (mehr) erlaubt -> auf Standard zurueck.
+          this.modell = null;
+          this.saveSession();
+          this.refreshFeedbackBars();
+          throw new ChatError('generic', 'model not allowed');
+        }
         throw new ChatError('generic', `HTTP 400 ${code}`);
       }
       if (!res.ok) throw new ChatError('generic', `HTTP ${res.status}`);
 
       const newConversationId = res.headers.get('x-conversation-id');
       if (newConversationId) lsSet(LS_CONVERSATION_KEY, newConversationId);
+      // Effektives Modell (CORS-exponiert nur auf test; prod: null).
+      const used = res.headers.get('x-model-used');
+      if (used) assistant.modell = used;
 
       const contentType = res.headers.get('content-type') ?? '';
       if (!contentType.includes('text/event-stream')) {
@@ -2664,8 +2748,22 @@ export class GodelmannChatbot extends HTMLElement {
     bar.className = 'fb';
     const up = mkBtn('fb-up', t.fbUp, FB_ICON_UP, t.fbUpShort);
     const down = mkBtn('fb-down', t.fbDown, FB_ICON_DOWN, t.fbDownShort);
+    bar.append(up, down);
+    // Testwerkzeuge (nur wenn der Server waehlbare Modelle meldet, d. h. auf
+    // test): Kommentar-Knopf (wie Gravelli test-only) + Modellwahl (Gehirn).
     const cmt = mkBtn('fb-comment', t.fbComment, FB_ICON_COMMENT, t.fbCommentShort);
-    bar.append(up, down, cmt);
+    if (this.testWerkzeugeAktiv) {
+      bar.append(cmt);
+      const brain = mkBtn('fb-model', t.fbModel, FB_ICON_BRAIN, this.modell ?? t.fbModelShort);
+      brain.setAttribute('aria-haspopup', 'menu');
+      brain.setAttribute('aria-expanded', 'false');
+      brain.classList.toggle('active', this.modell !== null);
+      brain.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleModelMenu(brain);
+      });
+      bar.append(brain);
+    }
     // 4. Element (Mehrsprachigkeit 04.08.): Flagge + Kuerzel der Sprache
     // DIESER Antwort (historisch korrekt) — Klick oeffnet das Sprachmenue.
     // Nur zeigen, wenn mehr als eine Sprache freigeschaltet ist.
@@ -2768,6 +2866,13 @@ export class GodelmannChatbot extends HTMLElement {
         `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
         `<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
     }
+    // Modell-Knopf nachziehen (Wahl gilt je Chat, nicht je Antwort).
+    const modelBtn = el.querySelector<HTMLButtonElement>('.fb-model');
+    if (modelBtn) {
+      const lbl = modelBtn.querySelector('.lbl');
+      if (lbl) lbl.textContent = this.modell ?? this.texts.fbModelShort;
+      modelBtn.classList.toggle('active', this.modell !== null);
+    }
     const up = el.querySelector('.fb-up');
     const down = el.querySelector('.fb-down');
     up?.classList.toggle('active', entry.rating === 1);
@@ -2785,6 +2890,106 @@ export class GodelmannChatbot extends HTMLElement {
         note.hidden = true;
       }
     }
+  }
+
+  /** Alle Feedback-Leisten mit dem aktuellen Stand der Testwerkzeuge in
+   *  Einklang bringen: fehlt einer Leiste der Modell-Knopf, obwohl die
+   *  Testwerkzeuge aktiv sind, wird sie neu gebaut (Wertung + Kommentar
+   *  leben im Entry und kommen ueber syncFeedbackBar zurueck); sonst nur
+   *  Label/Aktiv-Zustand nachziehen. */
+  private refreshFeedbackBars(): void {
+    for (const m of this.messages) {
+      if (m.role !== 'assistant' || !m.el || m.text.trim() === '') continue;
+      const bar = m.el.querySelector('.fb');
+      if (!bar) continue;
+      if (this.testWerkzeugeAktiv && !bar.querySelector('.fb-model')) {
+        m.el.querySelector('.fb-note')?.remove();
+        m.el.querySelector('.fb-form')?.remove();
+        bar.remove();
+        this.attachFeedbackBar(m);
+      } else {
+        this.syncFeedbackBar(m);
+      }
+    }
+  }
+
+  // --- Test-only Modellwahl je Chat (dgx CR-0033): Klon des Sprachmenues ---
+
+  private toggleModelMenu(anchor: HTMLButtonElement): void {
+    if (this.modelMenuEl && this.modelMenuAnchor === anchor) {
+      this.closeModelMenu(true);
+      return;
+    }
+    this.closeModelMenu(false);
+    this.closeLangMenu(false);
+    this.openModelMenu(anchor);
+  }
+
+  private openModelMenu(anchor: HTMLButtonElement): void {
+    if (this.busy || !this.testWerkzeugeAktiv) return;
+    const t = this.texts;
+    const menu = document.createElement('div');
+    menu.className = 'langmenu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', t.fbModel);
+    const aktiv = this.modell ?? this.modellStandard;
+    for (const slug of this.modelleWaehlbar) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'langitem';
+      item.setAttribute('role', 'menuitemradio');
+      item.setAttribute('aria-checked', String(slug === aktiv));
+      // textContent: Slugs kommen vom Server, nie als HTML parsen.
+      item.textContent = slug === this.modellStandard ? `${slug} (${t.modelDefault})` : slug;
+      item.addEventListener('click', () => this.chooseModel(slug));
+      menu.appendChild(item);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'menu-hint';
+    hint.textContent = t.modelMenuHint;
+    menu.appendChild(hint);
+    menu.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        this.closeModelMenu(true);
+      }
+    });
+    anchor.setAttribute('aria-expanded', 'true');
+    const wrap = anchor.closest('.msg') ?? this.messagesEl;
+    wrap.appendChild(menu);
+    this.modelMenuEl = menu;
+    this.modelMenuAnchor = anchor;
+    const checked = menu.querySelector<HTMLButtonElement>('button[aria-checked="true"]');
+    (checked ?? menu.querySelector('button'))?.focus();
+    this.modelMenuOutside = (e: Event): void => {
+      const path = e.composedPath();
+      if (this.modelMenuEl && !path.includes(this.modelMenuEl)
+          && (!this.modelMenuAnchor || !path.includes(this.modelMenuAnchor))) {
+        this.closeModelMenu(false);
+      }
+    };
+    document.addEventListener('click', this.modelMenuOutside, true);
+  }
+
+  private closeModelMenu(returnFocus: boolean): void {
+    if (this.modelMenuOutside) {
+      document.removeEventListener('click', this.modelMenuOutside, true);
+      this.modelMenuOutside = null;
+    }
+    this.modelMenuEl?.remove();
+    this.modelMenuEl = null;
+    this.modelMenuAnchor?.setAttribute('aria-expanded', 'false');
+    if (returnFocus) this.modelMenuAnchor?.focus();
+    this.modelMenuAnchor = null;
+  }
+
+  /** Modellwahl uebernehmen: Standard = keine Wahl (null), sonst Slug. */
+  private chooseModel(slug: string): void {
+    this.closeModelMenu(true);
+    if (this.busy) return;
+    this.modell = slug === this.modellStandard ? null : slug;
+    this.saveSession();
+    this.refreshFeedbackBars();
   }
 
   // --- Mehrsprachigkeit: Sprachmenue + Wechsel-Flow + Geo-Begruessung --------
@@ -2986,6 +3191,7 @@ export class GodelmannChatbot extends HTMLElement {
       message_id: entry.qsId,
       vote: entry.rating ?? 0,
       kommentar: entry.comment ?? null,
+      ...(entry.modell ? { modell: entry.modell } : {}),
       ts: new Date().toISOString(),
       hp_website: '',
     }), beacon);
@@ -3029,6 +3235,8 @@ export class GodelmannChatbot extends HTMLElement {
         // Chat-Sprache je Nachricht (Server reicht sie erst nach der
         // DB-Migration an PostgREST weiter — additiv unschaedlich).
         ...(m.lang && istChatSprache(m.lang) ? { sprache: m.lang } : {}),
+        // Effektives Modell (nur Assistent-Zeilen, nur test; dgx CR-0033).
+        ...(m.role === 'assistant' && m.modell ? { modell: m.modell } : {}),
       }));
       const body: Record<string, unknown> = {
         sitzung_id: this.sitzungId,

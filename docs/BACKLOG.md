@@ -1,6 +1,23 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-08-20 (Paket-Version **0.0.18**, test+prod)
+> Stand: 2026-09-06 (Paket-Version **0.0.19**, test; prod 0.0.18)
+
+## Release 0.0.19 (2026-09-06)
+
+- **Test-only Modellwahl je Chat (dgx CR-0033):** `GET /api/webchat-config`
+  liefert zusaetzlich `modelle_waehlbar: string[]` (test: die freigegebenen
+  Slugs; prod: `[]`) und `modell_standard`. Nur wenn die Liste nicht leer ist
+  (= Testumgebung), bekommt die Feedback-Leiste zwei weitere Elemente:
+  den Kommentar-Knopf (ab jetzt test-only, wie bei Gravelli) und ein
+  Gehirn-Symbol (lucide `brain`), das ein Menue mit einer Radio-Zeile je
+  Modell oeffnet (Standard als `<slug> (Standard)` markiert, Hinweiszeile
+  „nur Testumgebung"). Die Wahl gilt je Chat (Session `modell`, endet mit
+  „Neue Unterhaltung"), geht als `modell` im `/api/chat`-Body mit; das
+  effektive Modell kommt per Header `x-model-used` zurueck und wird je
+  Antwort gespeichert sowie an `/api/qs/transcript` (Assistent-Zeilen) und
+  `/api/qs/feedback` als `modell` gemeldet. HTTP 400 `model_not_allowed`
+  setzt die Wahl zurueck. Reihenfolge der Leiste: Daumen hoch, Daumen
+  runter, Kommentar, Modell, Flagge.
 
 ## Release 0.0.18 (2026-08-20)
 
