@@ -1,6 +1,37 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-06 (Paket-Version **0.0.19**, test; prod 0.0.18)
+> Stand: 2026-09-06 (Paket-Version **0.0.20**, test; prod 0.0.18)
+
+## Release 0.0.20 (2026-09-06)
+
+- **Layout = Gravelli-Chat (CR-26, Sabrina Ansicht 2/3), Godelmann-Farbschema:** Kopfzeile 56 px
+  grau `#E5E5E5` mit Avatar, Titel „Ihr KI-Berater" (en „Your AI Advisor", cs „Váš AI poradce"),
+  nur Reset (↺) + Schliessen (X) — Vollbild/Verkleinern entfallen (Entscheid Dietmar 06.09.);
+  `page-url` bleibt als v1-Attribut akzeptiert, ohne Funktion. Akzent = Website-Rot Red 100
+  `#E54F35` (Hover `#B33E29`), Text schwarz.
+- **Avatar** = ein SVG (40x40): weisser Kreis, grauer Ring, Godelmann-G als Glyph per Transform auf
+  die exakte Pfad-Bbox gesetzt (19 px hoch, Ecken der Glyph-Box auf konzentrischem Kreis, radialer
+  Abstand rundum 7 px) — in Kopfzeile, an jeder Berater-Blase und an der Zustimmungskarte.
+- **Blasen mit Spitze:** Berater weiss mit Rand `#E5E5E5`, Radius 8, Spitze oben links (12x11,
+  nach der Blase gerendert); Begruessung rot gefuellt; Nutzer grau `#E5E5E5` mit Spitze unten rechts;
+  Innenabstand 12/20, Avatar→Blase 8 px, Tipp-Indikator = drei pulsierende Punkte.
+- **Feedback-Leiste** icon-only grau `#656A6D` links unter der Blase (Hover/aktiv rot); Weltkugel
+  statt Flagge (Gravelli-Muster); Kommentar + Gehirn weiter test-only. Menues eckig.
+- **Chips** eckig (Radius 4), schwarzer Rand, 14 px, linksbuendig an der Blasenkante.
+- **Zustimmungskarte „Nutzungsbedingungen"** (Texte 1:1 Gravelli, de/en/cs) vor dem ersten
+  Kontakt: bis „Chat starten" verlaesst KEINE Anfrage das Widget (keine Begruessung, kein ALTCHA,
+  kein webchat-config, kein QS); „Abbrechen" schliesst (Vollseite: zurueck); Zustimmung liegt in der
+  sessionStorage-Sitzung (`consent`) und ueberlebt „Neue Unterhaltung"; neues Ereignis
+  `gdm-chat:consented`.
+- **Eingabe:** Feld grau 52 px / 16 px Schrift, Papierflieger rot IM Feld (24 px, Strich 1,5,
+  14 px vom rechten Rand); darunter ZWEI einzeilige, feldbreite Hinweiszeilen mit gemeinsamer
+  Auto-Fit-Schriftgroesse (max. 11 px): „KI-Berater – Angaben ohne Gewaehr … Kontaktformular."
+  (Link je Sprache: de `/de/unternehmen/kontakt`, en `/en/company/contact-us`, cs → en) und
+  „Anonymer Chat – bitte keine personenbezogenen Daten eingeben. Datenschutz" (de
+  `/de/datenschutz`, en `/en/data-protection`).
+- **Markdown:** `#`-Ueberschriften (z. B. „### Quellen:") als fette Absatzzeile statt Rohtext.
+- Gates: `tsc` 0, ESLint 0, Bundle 26 kB gzip (< 80 kB). Sichtpruefung Dev-Preview gegen
+  Ansicht 2/3 (Masse per DOM: Kopf 56, Avatar 40, Feld 52, Flieger 24, Chips 42 hoch).
 
 ## Release 0.0.19 (2026-09-06)
 

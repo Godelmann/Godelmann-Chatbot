@@ -58,7 +58,7 @@ Parent-Ebene dorthin promoted (hochgezogen). Nichts geht verloren, nichts blocki
 - **Versionierte Datei-URL** ist Vertrag zur Agentur: innerhalb `v1` bleiben Snippet/Attribute/CSS-Props/Events
   stabil; Breaking Changes ausschliesslich als neue `chatbot-widget.v2.js` (`docs/EINBINDUNG.md`).
 - Release-Sync-Pflicht: `> Stand:`-Kopf in `docs/BACKLOG.md` == aktuelle `package.json`-Version.
-- **CI:** Akzentfarbe ausschliesslich Godelmann-Rot `#E52D12` (CSS-Prop `--gdm-chat-accent`).
+- **CI:** Akzent = Website-Rot Red 100 `#E54F35` (Hover `#B33E29`), Layout = Gravelli-Chat (seit 0.0.20, 06.09.2026); CSS-Prop `--gdm-chat-accent`. NICHT `#E52D12` (zu orange, WEBCHAT.md §7b).
 
 ---
 

@@ -29,7 +29,7 @@ zusaetzlich `CLAUDE.md`. **Nichts hier duplizieren — dies ist ein duenner Zeig
   stabil; Breaking Changes nur als neue `chatbot-widget.v2.js`.
 - **Commits/PRs:** Conventional Commits, ASCII, **KEIN AI-/Co-Authored-By-Footer** (flottenweite
   XODER-Pflicht). Details: org-weites `Godelmann/.xoder/GITHUB.md` (falls ausgecheckt).
-- **CI:** Akzent-Default seit 0.0.11 **Anthrazit `#3F4549`** (Godelmann-Rot war zu aufdringlich, User-Entscheid 04.08.); via `--gdm-chat-accent`/`--gdm-chat-accent-hover` themebar. Icon-Sprache = Site-Icons (24×24, Stroke, round caps). Keine Secrets in Dateien/Commits.
+- **CI:** Seit 0.0.20 (06.09.2026) Layout = Gravelli-Chat (CR-26) mit Godelmann-Farbschema: Akzent **Website-Rot `#E54F35`** (Hover `#B33E29`), Flaechen `#E5E5E5`, Text schwarz, Icons `#656A6D`, G-Avatar als Glyph im SVG; via `--gdm-chat-accent`/`--gdm-chat-accent-hover` themebar. Icon-Sprache = lucide/Site-Icons (24×24, Stroke, round caps). Keine Secrets in Dateien/Commits.
 
 ## Tests (PFLICHT vor Chat-/Prompt-/Modell-Aenderungen)
 

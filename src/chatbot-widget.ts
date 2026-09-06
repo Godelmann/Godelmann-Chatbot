@@ -65,6 +65,8 @@ interface StoredSession {
   /** Test-only: je Chat gewaehltes Modell (Slug aus `modelle_waehlbar`);
    *  fehlt = Standardmodell des Servers (dgx CR-0033). */
   modell?: string;
+  /** Nutzungsbedingungen akzeptiert (Zustimmungskarte, 06.09.2026). */
+  consent?: boolean;
   draft: string;
   /** Cursor-/Auswahlposition — sonst springt der Cursor ans Ende. */
   cursor?: { start: number; end: number };
@@ -73,7 +75,16 @@ interface StoredSession {
 }
 const REQUEST_TIMEOUT_MS = 120_000;
 const MAX_MESSAGE_CHARS = 2000;
-const PRIVACY_URL = 'https://www.godelmann.de/de/datenschutz';
+/** Rechtliche Ziele je Sprache (hreflang der Site, belegt 06.09.2026).
+ *  godelmann.de hat keine tschechische Fassung -> x-default (en) via tabelle(). */
+const PRIVACY_URLS: SprachTabelle<string> = {
+  de: 'https://www.godelmann.de/de/datenschutz',
+  en: 'https://www.godelmann.de/en/data-protection',
+};
+const CONTACT_URLS: SprachTabelle<string> = {
+  de: 'https://www.godelmann.de/de/unternehmen/kontakt',
+  en: 'https://www.godelmann.de/en/company/contact-us',
+};
 
 /** Origin der Script-URL — Default fuer `api-base` (Widget + API vom selben Host). */
 const SCRIPT_ORIGIN: string = (() => {
@@ -174,20 +185,6 @@ const WEITER_IN: Record<ChatSprache, string> = {
   cs: 'Pokračovat česky',
 };
 
-/** Vereinfachte Inline-Miniflaggen (3:2, reine Streifen-Geometrie — kein
- *  Emoji: Windows rendert Flaggen-Emoji als Buchstaben; kein Wappen-Detail
- *  wegen Bundle-Gate). Godelmann zeigt sie farbig. */
-const FLAGGEN: Record<ChatSprache, string> = {
-  de: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#000"/><rect y=".667" width="3" height=".667" fill="#D00"/><rect y="1.333" width="3" height=".667" fill="#FFCE00"/></svg>',
-  en: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#012169"/><path d="M0 0l3 2M3 0L0 2" stroke="#fff" stroke-width=".45"/><path d="M0 0l3 2M3 0L0 2" stroke="#C8102E" stroke-width=".25"/><path d="M1.5 0v2M0 1h3" stroke="#fff" stroke-width=".65"/><path d="M1.5 0v2M0 1h3" stroke="#C8102E" stroke-width=".38"/></svg>',
-  fr: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="1" height="2" fill="#002395"/><rect x="2" width="1" height="2" fill="#ED2939"/></svg>',
-  it: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="1" height="2" fill="#009246"/><rect x="2" width="1" height="2" fill="#CE2B37"/></svg>',
-  es: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#AA151B"/><rect y=".5" width="3" height="1" fill="#F1BF00"/></svg>',
-  nl: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect width="3" height=".667" fill="#AE1C28"/><rect y="1.333" width="3" height=".667" fill="#21468B"/></svg>',
-  pl: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect y="1" width="3" height="1" fill="#DC143C"/></svg>',
-  cs: '<svg viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect y="1" width="3" height="1" fill="#D7141A"/><path d="M0 0l1.5 1L0 2z" fill="#11457E"/></svg>',
-};
-
 /** Sprachtabellen-Typ: de + en Pflicht (bestehende Basis), weitere Sprachen
  *  optional — `tabelle()` faellt fuer noch nicht uebersetzte auf en zurueck. */
 type SprachTabelle<T> = Partial<Record<ChatSprache, T>> & Record<'de' | 'en', T>;
@@ -208,11 +205,21 @@ interface Texts {
   inputPlaceholder: string;
   send: string;
   newConversation: string;
-  privacy: string;
-  privacyLink: string;
   close: string;
-  expand: string;
-  collapse: string;
+  /** Zustimmungskarte (Nutzungsbedingungen) vor dem ersten Kontakt — Texte
+   *  1:1 aus dem Gravelli-Chat (Entscheid 06.09.2026). */
+  consentTitle: string;
+  consentText1: string;
+  consentText2: string;
+  consentStart: string;
+  consentCancel: string;
+  /** Zwei einzeilige Hinweise unter dem Eingabefeld (Kontaktformular,
+   *  Datenschutz), Links per CONTACT_URLS/PRIVACY_URLS je Sprache. */
+  disc1Before: string;
+  disc1Link: string;
+  disc1After: string;
+  disc2Before: string;
+  disc2Link: string;
   errRateLimit: string;
   errCaptcha: string;
   errNetwork: string;
@@ -220,9 +227,6 @@ interface Texts {
   errInvalidMessage: string;
   errGeneric: string;
   retry: string;
-  /** Sichtbare Kurz-Labels der Kopfzeilen-Buttons (ARIA bleibt ausfuehrlich) */
-  fullscreen: string;
-  closeShort: string;
   /** QS-Feedback-Leiste an Assistent-Antworten */
   fbUp: string;
   fbDown: string;
@@ -254,7 +258,7 @@ const TEXTS: SprachTabelle<Texts> = {
   de: {
     bubbleOpen: 'Chat-Berater oeffnen',
     bubbleClose: 'Chat-Berater schliessen',
-    headerTitle: 'Chat-Berater',
+    headerTitle: 'Ihr KI-Berater',
     greeting:
       'Willkommen bei GODELMANN. Ich berate Sie rund um unsere Produkte, ' +
       'Flächen und Ideen für Garten, Haus und Objekt. Damit ich Sie gezielt ' +
@@ -263,11 +267,17 @@ const TEXTS: SprachTabelle<Texts> = {
     inputPlaceholder: 'Ihre Frage …',
     send: 'Senden',
     newConversation: 'Neue Unterhaltung',
-    privacy: 'Anonymer Chat — bitte keine personenbezogenen Daten eingeben.',
-    privacyLink: 'Datenschutz',
+    consentTitle: 'Nutzungsbedingungen',
+    consentText1: 'Mit der Verwendung dieses Chatbots stimmen Sie unseren Nutzungsbedingungen zu.',
+    consentText2: 'Sie kommunizieren mit einer künstlichen Intelligenz. Bitte keine personenbezogenen Daten eingeben.',
+    consentStart: 'Chat starten',
+    consentCancel: 'Abbrechen',
+    disc1Before: 'KI-Berater – Angaben ohne Gewähr. Verbindliche Auskünfte erhalten Sie über unser ',
+    disc1Link: 'Kontaktformular',
+    disc1After: '.',
+    disc2Before: 'Anonymer Chat – bitte keine personenbezogenen Daten eingeben. ',
+    disc2Link: 'Datenschutz',
     close: 'Chat schliessen',
-    expand: 'Als eigene Seite oeffnen',
-    collapse: 'Verkleinern',
     errRateLimit:
       'Gerade sind zu viele Anfragen eingegangen. Bitte versuchen Sie es in ' +
       'ein paar Minuten erneut (maximal 10 Nachrichten in 10 Minuten).',
@@ -284,8 +294,6 @@ const TEXTS: SprachTabelle<Texts> = {
     fbComment: 'Kommentar zu dieser Antwort',
     fbCancel: 'Abbrechen',
     fbYourComment: 'Ihr Kommentar',
-    fullscreen: 'Vollbild',
-    closeShort: 'Schließen',
     fbUpShort: 'Hilfreich',
     fbDownShort: 'Nicht hilfreich',
     fbCommentShort: 'Kommentar',
@@ -310,7 +318,7 @@ const TEXTS: SprachTabelle<Texts> = {
   en: {
     bubbleOpen: 'Open chat advisor',
     bubbleClose: 'Close chat advisor',
-    headerTitle: 'Chat advisor',
+    headerTitle: 'Your AI Advisor',
     greeting:
       'Welcome to GODELMANN. I can advise you on our products, surfaces and ' +
       'ideas for garden, home and commercial projects. To give you targeted ' +
@@ -319,11 +327,17 @@ const TEXTS: SprachTabelle<Texts> = {
     inputPlaceholder: 'Your question …',
     send: 'Send',
     newConversation: 'New conversation',
-    privacy: 'Anonymous chat — please do not enter personal data.',
-    privacyLink: 'Privacy policy',
+    consentTitle: 'Terms of use',
+    consentText1: 'By using this chatbot you agree to our terms of use.',
+    consentText2: 'You are communicating with an artificial intelligence. Please do not enter any personal data.',
+    consentStart: 'Start chat',
+    consentCancel: 'Cancel',
+    disc1Before: 'AI advisor – information without guarantee. For binding information, please use our ',
+    disc1Link: 'contact form',
+    disc1After: '.',
+    disc2Before: 'Anonymous chat – please do not enter any personal data. ',
+    disc2Link: 'Privacy policy',
     close: 'Close chat',
-    expand: 'Open as full page',
-    collapse: 'Collapse',
     errRateLimit:
       'Too many requests right now. Please try again in a few minutes ' +
       '(at most 10 messages per 10 minutes).',
@@ -338,8 +352,6 @@ const TEXTS: SprachTabelle<Texts> = {
     fbComment: 'Comment on this answer',
     fbCancel: 'Cancel',
     fbYourComment: 'Your comment',
-    fullscreen: 'Full view',
-    closeShort: 'Close',
     fbUpShort: 'Helpful',
     fbDownShort: 'Not helpful',
     fbCommentShort: 'Comment',
@@ -363,7 +375,7 @@ const TEXTS: SprachTabelle<Texts> = {
   cs: {
     bubbleOpen: 'Otevřít chat s poradcem',
     bubbleClose: 'Zavřít chat s poradcem',
-    headerTitle: 'Chatový poradce',
+    headerTitle: 'Váš AI poradce',
     greeting:
       'Vítejte u společnosti GODELMANN. Poradím vám s našimi produkty, ' +
       'plochami a nápady pro zahradu, dům i komerční projekty. Abych vám mohl ' +
@@ -372,11 +384,17 @@ const TEXTS: SprachTabelle<Texts> = {
     inputPlaceholder: 'Vaše otázka …',
     send: 'Odeslat',
     newConversation: 'Nová konverzace',
-    privacy: 'Anonymní chat — nezadávejte prosím žádné osobní údaje.',
-    privacyLink: 'Ochrana osobních údajů',
+    consentTitle: 'Podmínky použití',
+    consentText1: 'Používáním tohoto chatbota souhlasíte s našimi podmínkami použití.',
+    consentText2: 'Komunikujete s umělou inteligencí. Nezadávejte prosím žádné osobní údaje.',
+    consentStart: 'Zahájit chat',
+    consentCancel: 'Zrušit',
+    disc1Before: 'AI poradce – údaje bez záruky. Závazné informace získáte přes náš ',
+    disc1Link: 'kontaktní formulář',
+    disc1After: '.',
+    disc2Before: 'Anonymní chat – nezadávejte prosím žádné osobní údaje. ',
+    disc2Link: 'Ochrana osobních údajů',
     close: 'Zavřít chat',
-    expand: 'Otevřít jako samostatnou stránku',
-    collapse: 'Zmenšit',
     errRateLimit:
       'Právě přišlo příliš mnoho dotazů. Zkuste to prosím za několik minut ' +
       'znovu (nejvýše 10 zpráv za 10 minut).',
@@ -391,8 +409,6 @@ const TEXTS: SprachTabelle<Texts> = {
     fbComment: 'Komentář k této odpovědi',
     fbCancel: 'Zrušit',
     fbYourComment: 'Váš komentář',
-    fullscreen: 'Celá obrazovka',
-    closeShort: 'Zavřít',
     fbUpShort: 'Užitečné',
     fbDownShort: 'Neužitečné',
     fbCommentShort: 'Komentář',
@@ -850,6 +866,14 @@ function renderMarkdown(src: string): string {
       continue;
     }
     flushTable();
+    // Ueberschriften (z. B. "### Quellen:" des Servers) als fette Absatzzeile —
+    // vorher standen die Rauten sichtbar im Text (Gravelli: h1-h4 als Fliesstext).
+    const h = /^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/.exec(line);
+    if (h) {
+      flushPara(); flushList();
+      html.push(`<p class="h"><strong>${renderInline(escapeHtml(h[1] ?? ''))}</strong></p>`);
+      continue;
+    }
     const ul = /^\s{0,3}[-*]\s+(.*)$/.exec(line);
     const ol = /^\s{0,3}\d+[.)]\s+(.*)$/.exec(line);
     if (ul) {
@@ -954,224 +978,274 @@ class ChatError extends Error {
 
 const STYLE = /* css */ `
   :host {
-    /* Dokumentierte Theming-Hooks */
-    /* Godelmann-CI-Palette: Godelmann/CLAUDE.md. Akzent-Default seit 0.0.11
-       ANTHRAZIT (#3F4549) statt Red 100 — das rote Drawer-Design war zu
-       aufdringlich (User-Entscheid 04.08.); Rot bleibt per
-       --gdm-chat-accent jederzeit setzbar. */
-    --_accent: var(--gdm-chat-accent, #3F4549);
-    --_accent-hover: var(--gdm-chat-accent-hover, #2E3336);
+    /* Dokumentierte Theming-Hooks. Akzent = Website-Rot Red 100 (Entscheid
+       06.09.2026, Gravelli-Layout mit Godelmann-Farbschema); Hover Red 90. */
+    --_accent: var(--gdm-chat-accent, #E54F35);
+    --_accent-hover: var(--gdm-chat-accent-hover, #B33E29);
     --_z: var(--gdm-chat-z-index, 2147483000);
     --_font: var(--gdm-chat-font, inherit);
     /* Breite des Seiten-Drawers (mode="drawer"). Ueberschreibbar; Default 480px. */
     --_drawer-w: var(--gdm-chat-drawer-width, 480px);
+    /* Flaechen/Raender des Designs (Sabrina, Ansicht 2/3, gemessen 06.09.2026) */
+    --_grey: #E5E5E5;
+    --_line: #E2E3E3;
+    --_muted: #858688;
+    --_icon: #656A6D;
+    --_text: #000;
   }
   /* Seiten-Modus: das Element fuellt seinen (hoehen-gebenden) Container. */
   :host([mode="page"]) { display: block; width: 100%; height: 100%; }
   *, *::before, *::after { box-sizing: border-box; }
 
-  .root { font-family: var(--_font); font-size: 15px; line-height: 1.45; color: #3F4549; }
+  .root { font-family: var(--_font); font-size: 14px; line-height: 20px; color: var(--_text); }
 
-  /* --- Floating-Bubble --- */
+  /* --- Floating-Knopf (60px-Kreis, 30px vom Rand, wie der Gravelli-Sticky-Knopf) --- */
   .bubble {
-    position: fixed; bottom: 24px; z-index: var(--_z);
-    width: 56px; height: 56px; border-radius: 50%;
+    position: fixed; bottom: 30px; z-index: var(--_z);
+    width: 60px; height: 60px; border-radius: 50%;
     border: none; cursor: pointer; padding: 0;
     background: var(--_accent); color: #fff;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.15s ease;
+    transition: background-color 0.15s ease;
   }
-  /* Die Autor-Regel .bubble{display:flex} schlaegt das UA-[hidden] (gleiche
-     Spezifitaet, Autor gewinnt) — deshalb [hidden] hier explizit durchsetzen. */
   .bubble[hidden] { display: none; }
-  .bubble:hover { transform: scale(1.06); }
-  .bubble:focus-visible { outline: 3px solid #3F4549; outline-offset: 2px; }
-  .bubble svg { width: 28px; height: 28px; }
-  .root.pos-right .bubble { right: 24px; }
-  .root.pos-left .bubble { left: 24px; }
+  .bubble:hover { background: var(--_accent-hover); }
+  .bubble:focus-visible { outline: 2px solid var(--_accent-hover); outline-offset: 2px; }
+  .bubble svg { width: 26px; height: 26px; }
+  .root.pos-right .bubble { right: 30px; }
+  .root.pos-left .bubble { left: 30px; }
 
   /* --- Panel --- */
   .panel {
-    position: fixed; bottom: 96px; z-index: var(--_z);
+    position: fixed; bottom: 100px; z-index: var(--_z);
     width: 380px; max-width: calc(100vw - 32px);
-    height: 560px; max-height: calc(100vh - 120px);
+    height: 600px; max-height: calc(100vh - 120px);
     background: #fff; border-radius: 12px; overflow: hidden;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
     display: flex; flex-direction: column;
   }
   .panel[hidden] { display: none; }
-  .root.pos-right .panel { right: 24px; }
-  .root.pos-left .panel { left: 24px; }
+  .root.pos-right .panel { right: 30px; }
+  .root.pos-left .panel { left: 30px; }
 
+  /* --- Kopfzeile: 56px, Grau, Avatar + Titel + Reset + Schliessen --- */
   .header {
-    background: var(--_accent); color: #fff;
-    padding: 12px 14px; display: flex; align-items: center; gap: 8px;
+    height: 56px; background: var(--_grey); color: var(--_text);
+    padding: 0 14px; display: flex; align-items: center; gap: 12px;
     flex-shrink: 0;
   }
-  .header .title { font-weight: 700; flex: 1 1 auto; font-size: 16px; }
+  .header .title { font-weight: 700; font-size: 14px; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header .actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
   .header button {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(255, 255, 255, 0.14); color: #fff; border: none;
-    border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px;
-    padding: 5px 10px; white-space: nowrap; line-height: 1.2;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; color: var(--_text); border: none; padding: 6px;
+    cursor: pointer; line-height: 0; transition: color .12s;
   }
-  .header button:hover { background: rgba(255, 255, 255, 0.28); }
-  .header button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-  .header button .ico { display: inline-flex; }
-  .header button .ico svg { width: 15px; height: 15px; display: block; }
+  .header button svg { width: 20px; height: 20px; display: block; }
+  .header button:hover { color: var(--_accent); }
+  .header button:focus-visible { outline: 1px solid var(--_accent); outline-offset: 1px; }
   .header button[hidden] { display: none; }
 
+  /* --- Avatar: weisser Kreis, grauer Ring, rotes G als Glyph im SVG (Sabrina Ansicht 2/3) --- */
+  .avatar { display: inline-block; width: 40px; height: 40px; flex-shrink: 0; line-height: 0; }
+  .avatar svg { width: 40px; height: 40px; display: block; }
+
+  /* --- Verlauf --- */
   .messages {
-    flex: 1 1 auto; overflow-y: auto; padding: 14px;
-    display: flex; flex-direction: column; gap: 10px;
-    background: #ECEDED;
+    flex: 1 1 auto; overflow-y: auto; padding: 16px 14px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: #fff;
   }
-  .msg { max-width: 86%; padding: 8px 12px; border-radius: 10px; overflow-wrap: break-word; }
-  .msg.user { align-self: flex-end; background: var(--_accent); color: #fff; border-bottom-right-radius: 3px; }
-  .msg.assistant { align-self: flex-start; background: #fff; border: 1px solid #E2E3E3; border-bottom-left-radius: 3px; }
-  .quickreplies { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; max-width: 92%; margin: 2px 0 2px; }
-  .qr {
-    border: 1px solid var(--_accent); color: var(--_accent); background: #fff;
-    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px;
-    line-height: 1.2; cursor: pointer; transition: background .12s, color .12s;
+  .messages[hidden] { display: none; }
+  .botrow { display: flex; align-items: flex-start; gap: 8px; }
+  .botcol { position: relative; min-width: 0; max-width: 88%; }
+  .bwrap { position: relative; margin-top: 9px; }
+  .userrow { display: flex; justify-content: flex-end; }
+  .uwrap { position: relative; margin-bottom: 9px; max-width: 88%; }
+
+  .msg { padding: 12px 20px; border-radius: 8px; overflow-wrap: break-word; }
+  .msg.assistant { background: #fff; border: 1px solid var(--_grey); border-top-left-radius: 0; color: var(--_text); }
+  .msg.assistant.greeting { background: var(--_accent); border-color: var(--_accent); color: #fff; }
+  .msg.user { background: var(--_grey); color: #3F4549; border-bottom-right-radius: 0; white-space: pre-wrap; }
+  .msg.error {
+    align-self: flex-start; background: #fff; color: #B33E29;
+    border-left: 2px solid #B33E29; border-radius: 0; padding: 8px 12px;
   }
-  .qr:hover { background: var(--_accent); color: #fff; }
-  .qr:focus-visible { outline: 2px solid var(--_accent); outline-offset: 2px; }
-  .msg.error { align-self: flex-start; background: #F2A79A; border: 1px solid var(--_accent); color: #B33E29; }
+  /* Spitzen: nach der Blase gerendert, z-index ueber dem Rahmen */
+  .tip { position: absolute; left: 0; top: -9px; z-index: 1; pointer-events: none; display: block; }
+  .tip .fill { fill: #fff; }
+  .tip .line { fill: none; stroke: var(--_grey); stroke-width: 1; }
+  .bwrap.greeting .tip .fill { fill: var(--_accent); }
+  .bwrap.greeting .tip .line { display: none; }
+  .utip { position: absolute; right: 0; bottom: -9px; z-index: 1; pointer-events: none; display: block; }
+  .utip path { fill: var(--_grey); }
+
   .msg p { margin: 0 0 8px; }
   .msg p:last-child { margin-bottom: 0; }
-  .msg ul, .msg ol { margin: 4px 0; padding-left: 20px; }
-  .msg a { color: var(--_accent); text-decoration: underline; }
-  .msg img.chatimg { max-height: 120px; width: auto; max-width: 100%; border-radius: 6px; margin: 4px 6px 4px 0; display: inline-block; vertical-align: top; }
+  .msg p.h { font-weight: 600; margin-top: 8px; }
+  .msg p.h:first-child { margin-top: 0; }
+  .msg ul, .msg ol { margin: 4px 0; padding-left: 16px; line-height: 20px; }
+  .msg a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .msg a:hover { color: var(--_accent); }
+  .msg.greeting a:hover { color: #fff; opacity: .85; }
+  .msg img.chatimg { max-height: 160px; width: auto; max-width: 100%; border: 1px solid var(--_line); background: #fff; margin: 4px 6px 4px 0; display: inline-block; vertical-align: top; }
   .msg a.chatimg-link { position: relative; display: inline-block; line-height: 0; }
-  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: var(--_accent); color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; border-radius: 3px; pointer-events: none; }
+  .msg a.chatimg-link.pdf::after { content: "PDF"; position: absolute; right: 6px; bottom: 10px; background: var(--_accent); color: #fff; font: 600 9px/1.4 sans-serif; padding: 1px 5px; pointer-events: none; }
   .msg .tablewrap { overflow-x: auto; margin: 4px 0; }
   .msg table { border-collapse: collapse; width: 100%; font-size: 12px; }
-  .msg th, .msg td { border: 1px solid #E2E3E3; padding: 4px 7px; text-align: left; vertical-align: top; }
-  .msg th { background: #ECEDED; font-weight: 600; }
-  .msg.user a { color: #fff; }
+  .msg th, .msg td { border: 1px solid var(--_line); padding: 4px 7px; text-align: left; vertical-align: top; }
+  .msg th { background: #F2F2F2; font-weight: 600; }
   .msg .retry {
-    display: block; margin-top: 8px; border: 1px solid var(--_accent);
-    background: #fff; color: var(--_accent); border-radius: 6px;
-    padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px;
+    display: block; margin-top: 4px; border: none; background: none; padding: 0;
+    color: #B33E29; text-decoration: underline; text-underline-offset: 2px;
+    cursor: pointer; font: inherit;
   }
-  .msg .retry:hover { background: var(--_accent); color: #fff; }
+  .msg .retry:hover { text-decoration: none; }
 
-  /* --- Feedback-Leiste (QS): kleine, dezente Daumen-/Kommentar-Knoepfe
-     unter jeder fertigen Assistent-Antwort (Vorbild .msg .retry). --- */
-  .fb { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  /* --- Feedback-Leiste: icon-only, grau, links unter der Blase --- */
+  .fb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 0 -2px; }
   .fb button {
-    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-    border: 1px solid #E2E3E3; background: #fff; color: #656A6D;
-    border-radius: 6px; padding: 3px 8px; cursor: pointer; font: inherit;
-    line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: none; color: var(--_icon); padding: 2px;
+    cursor: pointer; font: inherit; line-height: 0; transition: color .12s;
   }
-  .fb button svg { width: 14px; height: 14px; }
-  .fb button .lbl { font-size: 12px; }
-  .fb button:hover { border-color: var(--_accent); color: var(--_accent); }
-  .fb button.active { background: var(--_accent); border-color: var(--_accent); color: #fff; }
-  .fb button:focus-visible { outline: 2px solid var(--_accent); outline-offset: 1px; }
-  .fb-note { margin-top: 6px; font-size: 12px; color: #656A6D; }
+  .fb button svg { width: 16px; height: 16px; }
+  .fb button .lbl { display: none; }
+  .fb button:hover { color: var(--_accent); }
+  .fb button.active { color: var(--_accent); }
+  .fb button.fb-up.active svg, .fb button.fb-down.active svg { fill: currentColor; }
+  .fb button:focus-visible { outline: 1px solid var(--_accent); outline-offset: 1px; }
+  .fb-note { margin-top: 4px; font-size: 11px; line-height: 1.375; color: var(--_muted); }
   .fb-note[hidden] { display: none; }
-  /* Inline-Kommentar-Formular (per Kommentar-Knopf auf-/zuklappbar) */
-  .fb-form { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
-  /* display:flex schlaegt das UA-[hidden] — wie bei .bubble explizit durchsetzen. */
+  .fb-form { margin-top: 4px; display: flex; align-items: flex-end; gap: 4px; }
   .fb-form[hidden] { display: none; }
   .fb-form textarea {
-    resize: none; border: 1px solid #C5C7C8; border-radius: 6px;
-    padding: 6px 8px; font: inherit; font-size: 13px; min-height: 48px;
-    background: #fff; color: #3F4549;
+    flex: 1 1 auto; resize: none; border: 1px solid var(--_line); border-radius: 0;
+    padding: 6px 8px; font: inherit; font-size: 12px; min-height: 44px;
+    background: #fff; color: var(--_text);
   }
-  .fb-form textarea:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
-  .fb-actions { display: flex; gap: 6px; }
+  .fb-form textarea:focus-visible { outline: 1px solid var(--_accent); outline-offset: -1px; }
+  .fb-actions { display: flex; flex-direction: column; gap: 4px; }
   .fb-actions button {
-    border: 1px solid var(--_accent); background: #fff; color: var(--_accent);
-    border-radius: 6px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px;
+    border: none; background: var(--_grey); color: var(--_text); border-radius: 0;
+    height: 28px; padding: 0 10px; cursor: pointer; font: inherit; font-size: 12px;
   }
   .fb-actions button.fb-send { background: var(--_accent); color: #fff; }
-  .fb-actions button:hover { background: var(--_accent-hover); border-color: var(--_accent-hover); color: #fff; }
+  .fb-actions button:hover { background: var(--_accent-hover); color: #fff; }
 
-  /* --- Mehrsprachigkeit: Flaggen-Knopf (4. Element der Feedback-Zeile),
-     Sprachmenue (in der Blase verankert) + Wechsel-Divider. Flaggen farbig
-     (Godelmann); Gravelli nutzt dasselbe Muster ausgegraut. --- */
-  .msg.assistant { position: relative; }
-  .fb .fb-lang .flag { display: inline-flex; line-height: 0; }
-  .fb .fb-lang .flag svg { width: 18px; height: 12px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+  /* --- Sprach-/Modellmenue (in der Blasen-Spalte verankert) + Wechsel-Divider --- */
   .langmenu {
-    position: absolute; bottom: 34px; right: 8px; z-index: 5;
+    position: absolute; bottom: 28px; left: 0; z-index: 5;
     display: flex; flex-direction: column; min-width: 150px;
-    background: #fff; border: 1px solid #E2E3E3; border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); padding: 4px; gap: 2px;
+    background: #fff; border: 1px solid var(--_line);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    padding: 4px; gap: 2px;
   }
+  .langmenu.modelmenu { min-width: 200px; }
   .langmenu .langitem {
     display: flex; align-items: center; gap: 8px;
-    border: none; background: none; color: #3F4549; border-radius: 6px;
-    padding: 6px 8px; cursor: pointer; font: inherit; font-size: 13px; text-align: left;
+    border: none; background: none; color: var(--_text);
+    padding: 6px 8px; cursor: pointer; font: inherit; font-size: 12px; text-align: left;
   }
-  .langmenu .langitem .flag { display: inline-flex; line-height: 0; }
-  .langmenu .langitem .flag svg { width: 18px; height: 12px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
-  .langmenu .langitem:hover { background: #ECEDED; }
-  .langmenu .langitem[aria-checked="true"] { font-weight: 700; }
-  .langmenu .langitem:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
-  /* Hinweiszeile im Modellmenue (test-only, dgx CR-0033) */
-  .menu-hint { padding: 4px 10px; font-size: 11px; color: #656A6D; }
+  .langmenu .langitem .flag { display: inline-flex; line-height: 0; opacity: .7; }
+  .langmenu .langitem .flag svg { width: 12px; height: 12px; }
+  .langmenu .langitem:hover { background: #F5F5F5; }
+  .langmenu .langitem[aria-checked="true"] { font-weight: 600; }
+  .langmenu .langitem:focus-visible { outline: 1px solid var(--_accent); outline-offset: -1px; }
+  .menu-hint { padding: 6px 8px 4px; font-size: 10px; line-height: 1.375; color: var(--_muted); }
   .langdivider {
-    align-self: center; margin: 2px 0; padding: 3px 12px;
-    border: 1px solid #E2E3E3; border-radius: 999px; background: #fff;
-    color: #656A6D; font-size: 12px; line-height: 1.4;
+    align-self: center; margin: 0; padding: 2px 12px;
+    border: 1px solid var(--_grey); background: #fff;
+    color: var(--_muted); font-size: 11px; line-height: 1.4;
   }
-  .root.mode-page .langdivider { background: #ECEDED; border-color: #ECEDED; }
 
+  /* Tipp-Indikator: drei pulsierende Punkte in der leeren Blase */
+  .msg.pending { min-height: 44px; }
   .msg.pending::after {
-    content: ''; display: inline-block; width: 9px; height: 9px;
-    margin-left: 6px; border-radius: 50%; background: var(--_accent);
-    animation: gdm-pulse 1s ease-in-out infinite;
+    content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    margin: 0 0 0 0; background: var(--_muted);
+    box-shadow: 10px 0 0 var(--_muted), 20px 0 0 var(--_muted);
+    animation: gdm-pulse 1.4s ease-in-out infinite;
   }
-  @keyframes gdm-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+  .msg.greeting.pending::after { background: rgba(255,255,255,.7); box-shadow: 10px 0 0 rgba(255,255,255,.7), 20px 0 0 rgba(255,255,255,.7); }
+  @keyframes gdm-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
-  .inputrow {
-    display: flex; gap: 8px; padding: 10px 12px; background: #fff;
-    border-top: 1px solid #E2E3E3; flex-shrink: 0;
+  /* --- Vorschlags-Chips: eckig (4px), schwarzer Rand, linksbuendig an der Blasenkante --- */
+  .quickreplies { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 0 48px; align-self: stretch; }
+  .qr {
+    border: 1px solid var(--_text); color: var(--_text); background: #fff;
+    border-radius: 4px; padding: 10px 20px; font: inherit; font-size: 14px;
+    line-height: 20px; text-align: left; cursor: pointer; transition: background .12s;
   }
+  .qr:hover { background: #F5F5F5; }
+  .qr:focus-visible { outline: 1px solid var(--_accent); outline-offset: 1px; }
+
+  /* --- Eingabe: Feld grau, Flieger IM Feld, zwei Hinweiszeilen darunter --- */
+  .inputrow { display: block; padding: 12px 30px 16px 62px; background: #fff; flex-shrink: 0; }
+  .inputrow[hidden] { display: none; }
+  .field { position: relative; }
   .inputrow textarea {
-    flex: 1 1 auto; resize: none; border: 1px solid #C5C7C8; border-radius: 8px;
-    padding: 8px 10px; font: inherit; min-height: 38px; max-height: 110px;
-    background: #fff; color: #3F4549;
+    display: block; width: 100%; resize: none; border: none; border-radius: 0;
+    background: var(--_grey); color: var(--_text);
+    padding: 14px 56px 14px 20px; font: inherit; font-size: 16px; line-height: 24px;
+    min-height: 52px; max-height: 140px;
   }
-  .inputrow textarea:focus-visible { outline: 2px solid var(--_accent); outline-offset: -1px; }
+  .inputrow textarea::placeholder { color: var(--_muted); opacity: 1; }
+  .inputrow textarea:focus-visible { outline: 1px solid var(--_accent); outline-offset: -1px; }
+  .inputrow textarea:disabled { opacity: .6; }
   .inputrow .send {
-    flex-shrink: 0; border: none; border-radius: 8px; padding: 8px 14px;
-    background: var(--_accent); color: #fff; font: inherit; font-weight: 700;
-    cursor: pointer;
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    border: none; background: none; padding: 0; line-height: 0;
+    color: var(--_accent); cursor: pointer; transition: color .12s;
   }
-  .inputrow .send:disabled { opacity: 0.55; cursor: default; }
-  .inputrow .send:focus-visible { outline: 2px solid #3F4549; outline-offset: 1px; }
-
-  .privacy {
-    padding: 6px 12px 10px; background: #fff; flex-shrink: 0;
-    font-size: 12px; color: #656A6D;
+  .inputrow .send svg { width: 24px; height: 24px; display: block; }
+  .inputrow .send:hover { color: var(--_accent-hover); }
+  .inputrow .send:disabled { cursor: default; }
+  .inputrow .send:focus-visible { outline: 1px solid var(--_accent); outline-offset: 2px; }
+  .disc {
+    display: block; width: 100%; margin: 4px 0 0; white-space: nowrap; overflow: hidden;
+    font-size: 9px; line-height: 1.375; color: var(--_muted);
+    letter-spacing: 0; text-transform: none;
   }
-  .privacy a { color: var(--_accent); }
+  .disc + .disc { margin-top: 2px; }
+  .disc a { color: inherit; text-decoration: underline; text-decoration-color: var(--_muted); text-underline-offset: 2px; transition: color .12s; }
+  .disc a:hover { color: var(--_text); }
 
-  /* Kleines Display: Panel vollflaechig; Button-Labels weichen den Icons */
+  /* --- Zustimmungskarte (Nutzungsbedingungen) --- */
+  .consent { flex: 1 1 auto; overflow-y: auto; padding: 20px 14px; }
+  .consent[hidden] { display: none; }
+  .consent .botrow { gap: 4px; }
+  .consent .botcol { max-width: none; flex: 1 1 auto; }
+  .card {
+    background: #fff; border: 1px solid var(--_grey);
+    border-radius: 12px; border-top-left-radius: 0; padding: 28px 24px 24px;
+  }
+  .ctitle { margin: 0; font-size: 22px; font-weight: 300; line-height: 1.2; color: var(--_text); }
+  .card p { margin: 16px 0 0; line-height: 1.625; }
+  .cactions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 16px; }
+  .cactions button {
+    border: none; background: var(--_grey); color: var(--_text);
+    padding: 10px 20px; font: inherit; font-weight: 700; cursor: pointer; transition: background .12s;
+  }
+  .cactions button:hover { background: #D9D9D9; }
+  .cactions button:focus-visible { outline: 1px solid var(--_accent); outline-offset: 1px; }
+
+  /* Kleines Display: Panel vollflaechig, Eingabe mit schmaleren Raendern */
   @media (max-width: 520px), (max-height: 560px) {
     .panel {
       inset: 0; width: 100%; max-width: none; height: 100%; max-height: none;
       border-radius: 0;
     }
     .root.pos-right .panel, .root.pos-left .panel { right: 0; left: 0; }
-    .header button .lbl, .fb button .lbl { display: none; }
+    .inputrow { padding: 12px 14px 14px 14px; }
+    .quickreplies { padding-left: 0; }
   }
 
   /* --- Launcher aus (Rail-Einbindung stellt einen eigenen Ausloeser) --- */
   .root.launcher-none .bubble { display: none; }
 
   /* --- Drawer-Modus: rechte Vollhoehen-Spalte ("Skyscraper") --- */
-  /* Ab Desktop schiebt der Wirt (html) seinen Inhalt schmaler (JS setzt die
-     Klasse gdm-chat-drawer-open + margin-right). Das Panel selbst sitzt fest
-     rechts und schiebt sanft herein. Auf kleinen Displays greift die
-     Vollflaechen-Media-Query oben (kein Schieben). */
   .root.mode-drawer .panel {
     position: fixed; top: 0; right: 0; bottom: 0; left: auto;
     width: var(--_drawer-w); max-width: 100vw;
@@ -1180,13 +1254,12 @@ const STYLE = /* css */ `
     box-shadow: -8px 0 40px rgba(0, 0, 0, 0.18);
   }
   .root.mode-drawer .panel:not([hidden]) {
-    animation: gdm-drawer-in 0.8s ease both;
+    animation: gdm-drawer-in 0.8s ease-out both;
   }
   @keyframes gdm-drawer-in {
     from { transform: translateX(100%); }
     to   { transform: translateX(0); }
   }
-  .dot { fill: var(--_accent); }
   @media (prefers-reduced-motion: reduce) {
     .root.mode-drawer .panel:not([hidden]) { animation: none; }
   }
@@ -1198,21 +1271,17 @@ const STYLE = /* css */ `
     width: 100%; max-width: none; height: 100%; max-height: none;
     border-radius: 0; box-shadow: none; animation: none;
   }
-  /* Rahmenlos auf der weissen /chat-Seite (User-Entscheid 04.08.): die graue
-     Nachrichten-Flaeche entfaellt, stattdessen weisser Grund + hellgraue
-     Berater-Blasen (Anthracite 10) — die Seite wirkt nicht mehr als Karte. */
-  .root.mode-page .messages { background: #fff; padding: 20px 4px; }
-  .root.mode-page .msg.assistant { background: #ECEDED; border-color: #ECEDED; }
-  .root.mode-page .inputrow { padding: 12px 4px; }
+  .root.mode-page .messages, .root.mode-page .consent { padding: 20px 4px; }
+  .root.mode-page .inputrow { padding: 12px 4px 16px 48px; }
 `;
 
+
+/** Launcher-Glyphe (schwebender Knopf): Sprechblase + Funke wie der
+ *  Gravelli-Sticky-Knopf (CR-26). */
 const BUBBLE_ICON = `
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H9.4L5.6 19.6c-.66.53-1.6.06-1.6-.78V5.5Z"
-      fill="currentColor"/>
-    <circle cx="8.6" cy="9.6" r="1.15" class="dot"/>
-    <circle cx="12" cy="9.6" r="1.15" class="dot"/>
-    <circle cx="15.4" cy="9.6" r="1.15" class="dot"/>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="miter" aria-hidden="true">
+    <path d="M10.5 6.5 H19 V20 L15.5 17 H8 V10"/>
+    <path d="M6 2.8 L6.8 5.2 L9.2 6 L6.8 6.8 L6 9.2 L5.2 6.8 L2.8 6 L5.2 5.2 Z" fill="currentColor" stroke="none"/>
   </svg>`;
 
 /** UI-Icons (Inline-SVG, kein neues Asset): dieselbe Formensprache wie die
@@ -1224,12 +1293,31 @@ const BUBBLE_ICON = `
 const ICON_ATTRS =
   'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" ' +
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
-const UI_ICON_PLUS = `
-  <svg ${ICON_ATTRS}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-const UI_ICON_MAXIMIZE = `
-  <svg ${ICON_ATTRS}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
-const UI_ICON_MINIMIZE = `
-  <svg ${ICON_ATTRS}><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+/** lucide rotate-ccw — "Neue Unterhaltung" (Kopfzeile, wie Gravelli). */
+const UI_ICON_RESET = `
+  <svg ${ICON_ATTRS}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+/** lucide send — Papierflieger IM Eingabefeld (Ansicht 3). */
+const UI_ICON_SEND = `
+  <svg ${ICON_ATTRS}><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>`;
+/** lucide globe — Antwortsprache (Gravelli-Muster statt Flagge, 06.09.2026). */
+const FB_ICON_GLOBE = `
+  <svg ${ICON_ATTRS}><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`;
+/** Blasen-Spitzen (12x11): oben links am Berater, unten rechts am Nutzer —
+ *  IMMER nach der Blase gerendert, die Fuellung deckt den Rahmenstreifen ab
+ *  (Gravelli 1.0.56, sonst "Haken"). Farben per CSS. */
+const TIP_BOT = `
+  <svg class="tip" width="12" height="11" viewBox="0 0 12 11" aria-hidden="true"><path class="fill" d="M0 11 L0 0.3 L11.5 9.6 L11.5 11 Z"/><path class="line" d="M0.5 11 L0.5 0.7 L11.5 9.6"/></svg>`;
+const TIP_USER = `
+  <svg class="utip" width="12" height="11" viewBox="0 0 12 11" aria-hidden="true"><path d="M12 0 L12 10.7 L0.5 1.4 L0.5 0 Z"/></svg>`;
+/** Avatar als EIN SVG (40x40): weisser Kreis mit grauem Ring + Godelmann-G
+ *  (GoCreate/public/godelmann-G.svg) als Glyph platziert — nicht per CSS,
+ *  sondern per Transform auf die exakte Pfad-Bbox (52.1/22.6, 26.6x31.2,
+ *  getBBox 06.09.2026): 19 px hoch (16.2 px breit) und auf die Kreismitte
+ *  gesetzt; die Ecken der Glyph-Box liegen auf einem konzentrischen Kreis
+ *  (radialer Abstand rundum 7.5 px), Masse wie in
+ *  Sabrinas Ansicht 3 (Glyph 16.5x19 im 40er-Kreis). */
+const AVATAR_HTML = `
+  <span class="avatar" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="19.5" fill="#fff" stroke="var(--_grey)" stroke-width="1"/><path transform="translate(20 20) scale(0.60897) translate(-65.40 -38.20)" fill="var(--_accent)" fill-rule="evenodd" d="M66.7,53.7c6.4,0,10.9-2.7,11.4-3.1v-13.5h-11.1v4.9h5.4v4.9h0c-1.4.5-3,.8-4.1.8-4.8,0-9.9-2.5-9.9-9.5s3.5-9.5,9.2-9.5,6.4,1.3,8.1,3l3-3.7c-2.6-3.3-7.2-5.4-11.7-5.4-8.8,0-14.9,6.4-14.9,15.6s5.9,15.6,14.8,15.6"/></svg></span>`;
 const UI_ICON_X = `
   <svg ${ICON_ATTRS}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 const FB_ICON_UP = `
@@ -1289,14 +1377,25 @@ export class GodelmannChatbot extends HTMLElement {
   private panel!: HTMLDivElement;
   private titleEl!: HTMLSpanElement;
   private newBtn!: HTMLButtonElement;
-  private punchoutBtn!: HTMLButtonElement;
-  private minimizeBtn!: HTMLButtonElement;
   private closeBtn!: HTMLButtonElement;
   private messagesEl!: HTMLDivElement;
   private form!: HTMLFormElement;
   private input!: HTMLTextAreaElement;
   private sendBtn!: HTMLButtonElement;
-  private privacyEl!: HTMLDivElement;
+  /** Zustimmungskarte (statt Verlauf + Eingabe, bis "Chat starten"). */
+  private consentEl!: HTMLDivElement;
+  private consentTitleEl!: HTMLHeadingElement;
+  private consentText1El!: HTMLParagraphElement;
+  private consentText2El!: HTMLParagraphElement;
+  private consentStartBtn!: HTMLButtonElement;
+  private consentCancelBtn!: HTMLButtonElement;
+  /** Zwei einzeilige Hinweiszeilen unter dem Feld (gemeinsame Schriftgroesse). */
+  private disc1El!: HTMLParagraphElement;
+  private disc2El!: HTMLParagraphElement;
+  private discRo: ResizeObserver | null = null;
+  /** Nutzungsbedingungen akzeptiert (sessionStorage, ueberlebt "Neue
+   *  Unterhaltung" wie bei Gravelli). Vorher KEIN Netzverkehr. */
+  private consent = false;
 
   private messages: MessageEntry[] = [];
   private isOpen = false;
@@ -1430,12 +1529,6 @@ export class GodelmannChatbot extends HTMLElement {
     return (this.getAttribute('launcher') ?? 'bubble').toLowerCase() === 'none' ? 'none' : 'bubble';
   }
 
-  /** Ziel des Vollbild-Wechsels (Drawer -> Seite). Default `/chat`. */
-  private get pageUrl(): string {
-    const attr = this.getAttribute('page-url');
-    return attr && attr.trim() !== '' ? attr.trim() : '/chat';
-  }
-
   /** Kleines Display (gleiche Grenze wie die Vollflaechen-Media-Query): dort
    *  wird der Drawer zum Vollbild-Panel und schiebt den Wirt NICHT. */
   private get isCompact(): boolean {
@@ -1478,6 +1571,9 @@ export class GodelmannChatbot extends HTMLElement {
       this.pagehideHandler = (): void => { this.flushAllQs(true); };
       window.addEventListener('pagehide', this.pagehideHandler);
     }
+    // Geerbte Webfont (Meta Pro) laedt nach: Textbreite aendert sich ohne
+    // Breitenaenderung des Formulars -> Hinweiszeilen einmal nachpassen.
+    document.fonts?.ready.then(() => this.fitDisclaimers()).catch(() => { /* egal */ });
   }
 
   /** Wird beim Entfernen aus dem DOM aufgerufen (godelmann.de laedt bei jeder
@@ -1500,6 +1596,8 @@ export class GodelmannChatbot extends HTMLElement {
       this.sendBtn.disabled = false;
     }
     this.applyHostPush(false);
+    this.discRo?.disconnect();
+    this.discRo = null;
     if (this.docHandlers) {
       document.removeEventListener('gdm-chat:open', this.docHandlers.open);
       document.removeEventListener('gdm-chat:close', this.docHandlers.close);
@@ -1551,6 +1649,7 @@ export class GodelmannChatbot extends HTMLElement {
       ...(this.sitzungId ? { sitzungId: this.sitzungId } : {}),
       ...(this.chatLang ? { chatLang: this.chatLang } : {}),
       ...(this.modell ? { modell: this.modell } : {}),
+      ...(this.consent ? { consent: true } : {}),
       draft: el?.value ?? '',
       ...(el ? { cursor: { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 } } : {}),
       ...(this.inputFocused ? { focused: true } : {}),
@@ -1577,7 +1676,16 @@ export class GodelmannChatbot extends HTMLElement {
            && !verlauf[verlauf.length - 1]?.text?.trim()) {
       verlauf.pop();
     }
-    if (verlauf.length === 0 && !s.draft) return;
+    // Zustimmung VOR dem Early-Return lesen: akzeptiert + neu geladen, waehrend
+    // die Begruessung noch lief (leere Blase oben verworfen) darf die Karte
+    // nicht erneut zeigen.
+    this.consent = s.consent === true;
+    if (verlauf.length === 0 && !s.draft) {
+      // Karte akzeptiert, aber noch kein Verlauf (z. B. Reload waehrend der
+      // Denkzeit): Panel-Zustand trotzdem zurueckholen.
+      if (s.open) this.open(false, false);
+      return;
+    }
 
     // QS-Sitzungs-ID zurueckholen; Alt-Sitzungen ohne Feld bekommen eine
     // frische (der Verlauf wird unten ohnehin einmal nachgesendet).
@@ -1681,7 +1789,8 @@ export class GodelmannChatbot extends HTMLElement {
         if (this.launcherKind === 'none') this.wireRailLaunchers();
         else this.unwireRailLaunchers();
         break;
-      // 'page-url' wird bei Bedarf gelesen (kein Zustand).
+      // 'page-url': seit 0.0.20 ohne Funktion (Kopfzeile ohne Vollbild-Wechsel,
+      // Design Sabrina); bleibt als v1-Attribut akzeptiert.
     }
   }
 
@@ -1715,41 +1824,79 @@ export class GodelmannChatbot extends HTMLElement {
     this.panel.hidden = true;
     this.panel.addEventListener('keydown', (e) => this.onPanelKeydown(e));
 
+    // Kopfzeile (Design Sabrina / Gravelli CR-26): Avatar, Titel, Reset, X —
+    // icon-only, Beschriftung nur als aria-label/title (applyTexts).
     const header = document.createElement('div');
     header.className = 'header';
+    header.insertAdjacentHTML('beforeend', AVATAR_HTML);
     this.titleEl = document.createElement('span');
     this.titleEl.className = 'title';
     this.titleEl.id = 'gdm-title';
     this.panel.setAttribute('aria-labelledby', 'gdm-title');
-    // Kopfzeilen-Buttons: Icon + sichtbares Kurz-Label (eine Formensprache
-    // mit den Site-Icons; Labels setzt applyTexts sprachreaktiv in .lbl).
     const kopfBtn = (cls: string, icon: string): HTMLButtonElement => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = cls;
-      b.innerHTML = `<span class="ico" aria-hidden="true">${icon}</span><span class="lbl"></span>`;
+      b.innerHTML = icon;
       return b;
     };
-    this.newBtn = kopfBtn('new', UI_ICON_PLUS);
+    this.newBtn = kopfBtn('new', UI_ICON_RESET);
     this.newBtn.addEventListener('click', () => this.resetConversation());
-    // Punchout (nur Drawer): auf die Vollseite wechseln.
-    this.punchoutBtn = kopfBtn('punchout', UI_ICON_MAXIMIZE);
-    this.punchoutBtn.hidden = true;
-    this.punchoutBtn.addEventListener('click', () => this.punchout());
-    // Verkleinern (nur Seite): zurueck in den Drawer der vorigen Seite.
-    this.minimizeBtn = kopfBtn('minimize', UI_ICON_MINIMIZE);
-    this.minimizeBtn.hidden = true;
-    this.minimizeBtn.addEventListener('click', () => this.minimizeToDrawer());
     this.closeBtn = kopfBtn('close', UI_ICON_X);
     this.closeBtn.addEventListener('click', () => this.close());
-    header.append(this.titleEl, this.newBtn, this.punchoutBtn, this.minimizeBtn, this.closeBtn);
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.append(this.newBtn, this.closeBtn);
+    header.append(this.titleEl, actions);
+
+    // Zustimmungskarte: gleiche Zeile wie eine Berater-Blase (Avatar + Karte
+    // mit Spitze), sichtbar bis "Chat starten".
+    this.consentEl = document.createElement('div');
+    this.consentEl.className = 'consent';
+    this.consentEl.hidden = true;
+    const crow = document.createElement('div');
+    crow.className = 'botrow';
+    crow.insertAdjacentHTML('beforeend', AVATAR_HTML);
+    const ccol = document.createElement('div');
+    ccol.className = 'botcol';
+    const cwrap = document.createElement('div');
+    cwrap.className = 'bwrap';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-labelledby', 'gdm-consent-title');
+    this.consentTitleEl = document.createElement('h3');
+    this.consentTitleEl.className = 'ctitle';
+    this.consentTitleEl.id = 'gdm-consent-title';
+    this.consentText1El = document.createElement('p');
+    this.consentText2El = document.createElement('p');
+    const cactions = document.createElement('div');
+    cactions.className = 'cactions';
+    this.consentStartBtn = document.createElement('button');
+    this.consentStartBtn.type = 'button';
+    this.consentStartBtn.className = 'cstart';
+    this.consentStartBtn.addEventListener('click', () => this.acceptConsent());
+    this.consentCancelBtn = document.createElement('button');
+    this.consentCancelBtn.type = 'button';
+    this.consentCancelBtn.className = 'ccancel';
+    this.consentCancelBtn.addEventListener('click', () => this.declineConsent());
+    cactions.append(this.consentStartBtn, this.consentCancelBtn);
+    card.append(this.consentTitleEl, this.consentText1El, this.consentText2El, cactions);
+    cwrap.append(card);
+    cwrap.insertAdjacentHTML('beforeend', TIP_BOT);
+    ccol.append(cwrap);
+    crow.append(ccol);
+    this.consentEl.append(crow);
 
     this.messagesEl = document.createElement('div');
     this.messagesEl.className = 'messages';
     this.messagesEl.setAttribute('aria-live', 'polite');
 
+    // Eingabe: Feld + Flieger IM Feld, darunter zwei Hinweiszeilen.
     this.form = document.createElement('form');
     this.form.className = 'inputrow';
+    const field = document.createElement('div');
+    field.className = 'field';
     this.input = document.createElement('textarea');
     this.input.rows = 1;
     this.input.maxLength = MAX_MESSAGE_CHARS;
@@ -1776,18 +1923,80 @@ export class GodelmannChatbot extends HTMLElement {
     this.sendBtn = document.createElement('button');
     this.sendBtn.type = 'submit';
     this.sendBtn.className = 'send';
-    this.form.append(this.input, this.sendBtn);
+    this.sendBtn.innerHTML = UI_ICON_SEND;
+    field.append(this.input, this.sendBtn);
+    this.disc1El = document.createElement('p');
+    this.disc1El.className = 'disc disc1';
+    this.disc2El = document.createElement('p');
+    this.disc2El.className = 'disc disc2';
+    this.form.append(field, this.disc1El, this.disc2El);
     this.form.addEventListener('submit', (e) => {
       e.preventDefault();
       void this.submitInput();
     });
+    // Breite des Formulars aendert sich (Panel auf/zu, Drawer, Viewport) ->
+    // Hinweiszeilen nachpassen. jsdom/alte Browser ohne ResizeObserver: Erst-Fit.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.discRo = new ResizeObserver(() => this.fitDisclaimers());
+      this.discRo.observe(this.form);
+    }
 
-    this.privacyEl = document.createElement('div');
-    this.privacyEl.className = 'privacy';
-
-    this.panel.append(header, this.messagesEl, this.form, this.privacyEl);
+    this.panel.append(header, this.consentEl, this.messagesEl, this.form);
     this.rootDiv.append(this.bubbleBtn, this.panel);
     this.root.appendChild(this.rootDiv);
+  }
+
+  /** Beide Hinweiszeilen einzeilig und exakt feldbreit: Schriftgroesse =
+   *  min(11px, 9px * (Breite - 0.5) / Textbreite), fuer beide Zeilen derselbe
+   *  Wert (Minimum). Formel wie im Gravelli-Chat (ChatDisclaimer). */
+  private fitDisclaimers(): void {
+    const lines = [this.disc1El, this.disc2El];
+    if (!lines[0] || this.panel.hidden || lines[0].clientWidth === 0) return;
+    let s = Number.POSITIVE_INFINITY;
+    for (const el of lines) {
+      el.style.fontSize = '9px';
+      s = Math.min(s, (el.clientWidth - 0.5) / Math.max(1, el.scrollWidth));
+    }
+    if (!Number.isFinite(s)) return;
+    let px = Math.min(11, 9 * s);
+    for (const el of lines) el.style.fontSize = `${px.toFixed(2)}px`;
+    // Zweiter Durchgang: Textbreite skaliert bei kleinen Groessen nicht exakt
+    // linear (Hinting/Rundung) — was noch ueberlaeuft, wird nachjustiert.
+    for (let pass = 0; pass < 2; pass++) {
+      let f = 1;
+      for (const el of lines) {
+        if (el.scrollWidth > el.clientWidth) f = Math.min(f, (el.clientWidth - 0.5) / Math.max(1, el.scrollWidth));
+      }
+      if (f >= 1) break;
+      px *= f;
+      for (const el of lines) el.style.fontSize = `${px.toFixed(2)}px`;
+    }
+  }
+
+  /** Karte oder Verlauf+Eingabe zeigen — je nach Zustimmung. */
+  private renderConsentState(): void {
+    this.consentEl.hidden = this.consent;
+    this.messagesEl.hidden = !this.consent;
+    this.form.hidden = !this.consent;
+    this.newBtn.hidden = !this.consent;
+    if (this.consent) this.fitDisclaimers();
+  }
+
+  private acceptConsent(): void {
+    if (this.consent) return;
+    this.consent = true;
+    this.renderConsentState();
+    this.startConversation(true, true);
+    this.saveSession();
+    this.emit('gdm-chat:consented');
+  }
+
+  /** "Abbrechen": Drawer/floating schliessen; auf der Vollseite gibt es
+   *  nichts zu schliessen -> zurueck zur vorigen Seite. Zustimmung bleibt
+   *  verweigert, beim naechsten Oeffnen kommt die Karte erneut. */
+  private declineConsent(): void {
+    if (this.mode === 'page') this.leavePage();
+    else this.close();
   }
 
   private applyPosition(): void {
@@ -1800,36 +2009,37 @@ export class GodelmannChatbot extends HTMLElement {
     const t = this.texts;
     this.bubbleBtn.setAttribute('aria-label', this.isOpen ? t.bubbleClose : t.bubbleOpen);
     this.titleEl.textContent = t.headerTitle;
-    const setLbl = (btn: HTMLButtonElement, text: string): void => {
-      const l = btn.querySelector('.lbl');
-      if (l) l.textContent = text;
-    };
-    setLbl(this.newBtn, t.newConversation);
-    setLbl(this.punchoutBtn, t.fullscreen);
-    setLbl(this.minimizeBtn, t.collapse);
-    setLbl(this.closeBtn, t.closeShort);
-    this.punchoutBtn.setAttribute('aria-label', t.expand);
-    this.punchoutBtn.setAttribute('title', t.expand);
-    this.minimizeBtn.setAttribute('aria-label', t.collapse);
-    this.minimizeBtn.setAttribute('title', t.collapse);
+    this.newBtn.setAttribute('aria-label', t.newConversation);
+    this.newBtn.setAttribute('title', t.newConversation);
     this.closeBtn.setAttribute('aria-label', t.close);
+    this.closeBtn.setAttribute('title', t.close);
+    this.consentTitleEl.textContent = t.consentTitle;
+    this.consentText1El.textContent = t.consentText1;
+    this.consentText2El.textContent = t.consentText2;
+    this.consentStartBtn.textContent = t.consentStart;
+    this.consentCancelBtn.textContent = t.consentCancel;
     this.input.placeholder = t.inputPlaceholder;
     this.input.setAttribute('aria-label', t.inputPlaceholder);
-    this.sendBtn.textContent = t.send;
-    this.privacyEl.innerHTML =
-      `${escapeHtml(t.privacy)} <a href="${PRIVACY_URL}" target="_blank" ` +
-      `rel="noopener noreferrer">${escapeHtml(t.privacyLink)}</a>`;
+    this.sendBtn.setAttribute('aria-label', t.send);
+    this.sendBtn.setAttribute('title', t.send);
+    const link = (href: string, label: string): string =>
+      `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+    this.disc1El.innerHTML =
+      `${escapeHtml(t.disc1Before)}${link(tabelle(CONTACT_URLS, this.langKey), t.disc1Link)}${escapeHtml(t.disc1After)}`;
+    this.disc2El.innerHTML =
+      `${escapeHtml(t.disc2Before)}${link(tabelle(PRIVACY_URLS, this.langKey), t.disc2Link)}`;
+    this.fitDisclaimers();
     // Greeting-Nachrichten sprachreaktiv halten (inkl. Geo-Zweisprachigkeit);
-    // ihr Sprach-Stempel zieht mit (die Flagge zeigt sonst die alte Sprache
-    // zu neuem Text).
+    // ihr Sprach-Stempel zieht mit (die Weltkugel-Auswahl zeigt sonst die alte
+    // Sprache zu neuem Text).
     for (const m of this.messages) {
       if (m.isGreeting) {
         m.lang = this.langKey;
         m.text = this.greetingBubbleText();
         if (m.el) {
           m.el.innerHTML = renderMarkdown(m.text);
-          // innerHTML hat eine vorhandene Feedback-Leiste mit entfernt ->
-          // neu anbauen (nicht an der noch tippenden pending-Blase).
+          // Die Feedback-Leiste lebt in der Blasen-Spalte (nicht in der
+          // Blase) -> nur Zustand nachziehen (nicht an der pending-Blase).
           if (!m.el.classList.contains('pending')) this.attachFeedbackBar(m);
         }
       }
@@ -1858,6 +2068,26 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-expanded', 'true');
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleClose);
     this.syncLauncherState();
+    // Drawer schiebt den Wirt schmaler (nur Desktop); Seite/floating nicht.
+    if (this.mode === 'drawer' && !this.isCompact) this.applyHostPush(true);
+    // Zustimmungskarte gated ALLES Weitere (Begruessung, Config, ALTCHA):
+    // vor "Chat starten" verlaesst keine Anfrage das Widget.
+    this.renderConsentState();
+    if (this.consent) {
+      this.startConversation(fokussieren, alsBenutzeraktion);
+    } else if (fokussieren && this.mode !== 'page') {
+      if (this.mode === 'floating') this.panel.setAttribute('aria-modal', 'true');
+      this.consentStartBtn.focus();
+    }
+    this.saveSession();
+    // Beim Wiederherstellen hat der Besucher nichts geoeffnet - weder ein
+    // Ereignis melden noch ungefragt Rechenarbeit anwerfen.
+    if (alsBenutzeraktion) this.emit('gdm-chat:opened');
+  }
+
+  /** Unterhaltung starten/fortsetzen — erst nach Zustimmung: Begruessung,
+   *  Link-Ziele, ALTCHA-Vorloesung, Fokus. */
+  private startConversation(fokussieren: boolean, alsBenutzeraktion: boolean): void {
     if (this.messages.length === 0) {
       // Begruessung wie eine echte Modell-Antwort ausspielen (simulierte
       // Denkzeit), danach die Zielgruppen-Chips.
@@ -1871,18 +2101,12 @@ export class GodelmannChatbot extends HTMLElement {
     // ALTCHA vorloesen, damit die erste Nachricht ohne Wartezeit rausgeht.
     // Nur bei echter Benutzeraktion: sonst rechnet jede Folgeseite ungefragt.
     if (alsBenutzeraktion) this.ensureAltcha();
-    // Drawer schiebt den Wirt schmaler (nur Desktop); Seite/floating nicht.
-    if (this.mode === 'drawer' && !this.isCompact) this.applyHostPush(true);
     // Fokus: floating ist ein modaler Dialog; der Drawer fokussiert das Feld
     // OHNE Modal/Trap (Seite bleibt bedienbar); die Vollseite laesst den Fokus.
     if (fokussieren && this.mode !== 'page') {
       if (this.mode === 'floating') this.panel.setAttribute('aria-modal', 'true');
       this.input.focus();
     }
-    this.saveSession();
-    // Beim Wiederherstellen hat der Besucher nichts geoeffnet - weder ein
-    // Ereignis melden noch ungefragt Rechenarbeit anwerfen.
-    if (alsBenutzeraktion) this.emit('gdm-chat:opened');
   }
 
   close(): void {
@@ -1910,10 +2134,8 @@ export class GodelmannChatbot extends HTMLElement {
     this.rootDiv.classList.toggle('mode-drawer', m === 'drawer');
     this.rootDiv.classList.toggle('mode-page', m === 'page');
     this.rootDiv.classList.toggle('launcher-none', this.launcherKind === 'none');
-    // Punchout nur im Drawer, Verkleinern nur auf der Seite, Schliessen nicht
-    // auf der Seite, Bubble nur bei launcher="bubble" und nicht im Seiten-Modus.
-    this.punchoutBtn.hidden = m !== 'drawer';
-    this.minimizeBtn.hidden = m !== 'page';
+    // Schliessen nicht auf der Seite, Bubble nur bei launcher="bubble" und
+    // nicht im Seiten-Modus (Vollbild-/Verkleinern-Knoepfe entfielen 0.0.20).
     this.closeBtn.hidden = m === 'page';
     this.bubbleBtn.hidden = this.launcherKind === 'none' || m === 'page';
     if (m === 'page') this.open(false, false);
@@ -1996,17 +2218,9 @@ export class GodelmannChatbot extends HTMLElement {
     document.addEventListener('gdm-chat:toggle', this.docHandlers.toggle);
   }
 
-  /** Punchout (Drawer -> Vollseite): Sitzung sichern, dann zur Seite wechseln.
-   *  Gleiche Origin -> gleiches sessionStorage -> nahtlose Unterhaltung. */
-  private punchout(): void {
-    this.saveSession();
-    window.location.assign(this.pageUrl);
-  }
-
-  /** Verkleinern (Vollseite -> Drawer der vorigen Seite). Gab es eine
-   *  same-origin-Vorseite, dorthin zurueck (der Drawer oeffnet dort via
-   *  restoreSession wieder); sonst sauber auf die Startseite. */
-  private minimizeToDrawer(): void {
+  /** Vollseite verlassen (Zustimmung abgelehnt): gab es eine same-origin-
+   *  Vorseite, dorthin zurueck; sonst sauber auf die Startseite. */
+  private leavePage(): void {
     this.saveSession();
     let sameOrigin = false;
     try {
@@ -2017,6 +2231,9 @@ export class GodelmannChatbot extends HTMLElement {
   }
 
   private resetConversation(): void {
+    // Ohne Zustimmung gibt es keine Unterhaltung, die neu beginnen koennte;
+    // die Zustimmung selbst bleibt beim Reset erhalten (wie Gravelli).
+    if (!this.consent) return;
     // Offene QS-Meldungen der ALTEN Unterhaltung noch rausschicken (Beacon:
     // synchron gebaut, fire-and-forget), bevor Verlauf + Sitzung wechseln.
     this.flushAllQs(true);
@@ -2086,6 +2303,19 @@ export class GodelmannChatbot extends HTMLElement {
 
   // --- Nachrichten-Rendering ----------------------------------------------
 
+  /** Blasen-Spalte einer Berater-Nachricht (Feedback-Leiste, Menues). */
+  private botCol(entry: MessageEntry): HTMLElement | null {
+    return entry.el?.closest<HTMLElement>('.botcol') ?? null;
+  }
+
+  /** Nachricht samt Zeile aus dem Verlauf entfernen (Blase allein liesse
+   *  eine leere Avatar-Zeile stehen). */
+  private removeMessageEl(entry: MessageEntry): void {
+    const el = entry.el;
+    if (!el) return;
+    (el.closest('.botrow') ?? el.closest('.userrow') ?? el).remove();
+  }
+
   private appendMessage(entry: MessageEntry): MessageEntry {
     // QS-Metadaten zentral vergeben: stabile ID + Anlegezeit je Nachricht.
     // Die Art faellt auf Rollen-Defaults zurueck, wenn der Aufrufer nichts
@@ -2115,7 +2345,37 @@ export class GodelmannChatbot extends HTMLElement {
     el.innerHTML = renderMarkdown(entry.text);
     entry.el = el;
     this.messages.push(entry);
-    this.messagesEl.appendChild(el);
+    // Zeilenaufbau (Gravelli CR-26): Berater = Avatar + Spalte (Blase, Spitze
+    // DANACH, spaeter Feedback-Leiste in der Spalte); Nutzer = rechtsbuendige
+    // Blase mit Spitze unten rechts; Fehler = direkt im Verlauf. `entry.el`
+    // bleibt IMMER die Blase (alle Schreiber arbeiten weiter auf ihr).
+    if (entry.role === 'assistant') {
+      const greeting = entry.isGreeting === true || entry.art === 'begruessung';
+      if (greeting) el.classList.add('greeting');
+      const row = document.createElement('div');
+      row.className = 'botrow';
+      row.insertAdjacentHTML('beforeend', AVATAR_HTML);
+      const col = document.createElement('div');
+      col.className = 'botcol';
+      const wrap = document.createElement('div');
+      wrap.className = greeting ? 'bwrap greeting' : 'bwrap';
+      wrap.append(el);
+      wrap.insertAdjacentHTML('beforeend', TIP_BOT);
+      col.append(wrap);
+      row.append(col);
+      this.messagesEl.appendChild(row);
+    } else if (entry.role === 'user') {
+      const row = document.createElement('div');
+      row.className = 'userrow';
+      const wrap = document.createElement('div');
+      wrap.className = 'uwrap';
+      wrap.append(el);
+      wrap.insertAdjacentHTML('beforeend', TIP_USER);
+      row.append(wrap);
+      this.messagesEl.appendChild(row);
+    } else {
+      this.messagesEl.appendChild(el);
+    }
     this.scrollToEnd();
     this.saveSession();
     // Transcript-Melder: User-Echos + Fehlermeldungen sind sofort fertig.
@@ -2377,7 +2637,7 @@ export class GodelmannChatbot extends HTMLElement {
       btn.className = 'retry';
       btn.textContent = this.texts.retry;
       btn.addEventListener('click', () => {
-        entry.el?.remove();
+        this.removeMessageEl(entry);
         this.messages = this.messages.filter((m) => m !== entry);
         void this.startChat(retryText);
       });
@@ -2492,7 +2752,7 @@ export class GodelmannChatbot extends HTMLElement {
       const kind: ChatErrorKind = err instanceof ChatError ? err.kind : 'generic';
       // Leere Assistent-Blase entfernen; Teilantworten bleiben stehen.
       if (assistant.text === '' && assistant.el) {
-        assistant.el.remove();
+        this.removeMessageEl(assistant);
         this.messages = this.messages.filter((m) => m !== assistant);
       }
       const msg =
@@ -2726,7 +2986,9 @@ export class GodelmannChatbot extends HTMLElement {
     // Meta-Nachrichten (Sprachwechsel-Divider, Geo-Sprachwahl) sind keine
     // bewertbaren Antworten.
     if (entry.art === 'sprachwechsel' || entry.art === 'sprachwahl') return;
-    if (entry.el.querySelector('.fb')) {
+    const col = this.botCol(entry);
+    if (!col) return;
+    if (col.querySelector(':scope > .fb')) {
       this.syncFeedbackBar(entry);
       return;
     }
@@ -2777,8 +3039,7 @@ export class GodelmannChatbot extends HTMLElement {
       flag.setAttribute('title', t.langMenu);
       flag.setAttribute('aria-haspopup', 'menu');
       flag.setAttribute('aria-expanded', 'false');
-      flag.innerHTML = `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
-        `<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
+      flag.innerHTML = `${FB_ICON_GLOBE}<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
       flag.addEventListener('click', (e) => {
         e.stopPropagation();
         this.toggleLangMenu(flag);
@@ -2848,23 +3109,22 @@ export class GodelmannChatbot extends HTMLElement {
       cmt.setAttribute('aria-expanded', 'false');
     });
 
-    entry.el.append(bar, note, form);
+    col.append(bar, note, form);
     this.syncFeedbackBar(entry);
   }
 
   /** Zustand (aktiver Daumen, Kommentar-Text) in die bestehende Leiste spiegeln. */
   private syncFeedbackBar(entry: MessageEntry): void {
-    const el = entry.el;
+    const el = this.botCol(entry);
     if (!el) return;
-    // Flagge nachziehen (sprachreaktive Nachrichten wie die Begruessung
+    // Sprach-Kuerzel nachziehen (sprachreaktive Nachrichten wie die Begruessung
     // wechseln ihren Sprach-Stempel — der Button behaelt seinen Listener).
     const flagBtn = el.querySelector<HTMLButtonElement>('.fb-lang');
     if (flagBtn) {
       const sprache: ChatSprache =
         entry.lang && istChatSprache(entry.lang) ? entry.lang : this.langKey;
-      flagBtn.innerHTML =
-        `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
-        `<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
+      flagBtn.innerHTML = `${FB_ICON_GLOBE}<span class="lbl">${SPRACH_KUERZEL[sprache]}</span>`;
+      flagBtn.setAttribute('title', `${this.texts.langMenu} – ${SPRACH_NAMEN[sprache]}`);
     }
     // Modell-Knopf nachziehen (Wahl gilt je Chat, nicht je Antwort).
     const modelBtn = el.querySelector<HTMLButtonElement>('.fb-model');
@@ -2900,11 +3160,12 @@ export class GodelmannChatbot extends HTMLElement {
   private refreshFeedbackBars(): void {
     for (const m of this.messages) {
       if (m.role !== 'assistant' || !m.el || m.text.trim() === '') continue;
-      const bar = m.el.querySelector('.fb');
-      if (!bar) continue;
+      const col = this.botCol(m);
+      const bar = col?.querySelector(':scope > .fb');
+      if (!col || !bar) continue;
       if (this.testWerkzeugeAktiv && !bar.querySelector('.fb-model')) {
-        m.el.querySelector('.fb-note')?.remove();
-        m.el.querySelector('.fb-form')?.remove();
+        col.querySelector(':scope > .fb-note')?.remove();
+        col.querySelector(':scope > .fb-form')?.remove();
         bar.remove();
         this.attachFeedbackBar(m);
       } else {
@@ -2955,7 +3216,7 @@ export class GodelmannChatbot extends HTMLElement {
       }
     });
     anchor.setAttribute('aria-expanded', 'true');
-    const wrap = anchor.closest('.msg') ?? this.messagesEl;
+    const wrap = anchor.closest('.botcol') ?? this.messagesEl;
     wrap.appendChild(menu);
     this.modelMenuEl = menu;
     this.modelMenuAnchor = anchor;
@@ -3017,7 +3278,7 @@ export class GodelmannChatbot extends HTMLElement {
       item.setAttribute('role', 'menuitemradio');
       item.setAttribute('aria-checked', String(sprache === this.langKey));
       item.innerHTML =
-        `<span class="flag" aria-hidden="true">${FLAGGEN[sprache]}</span>` +
+        `<span class="flag" aria-hidden="true">${FB_ICON_GLOBE}</span>` +
         `<span>${SPRACH_NAMEN[sprache]}</span>`;
       item.addEventListener('click', () => this.switchLanguage(sprache));
       menu.appendChild(item);
@@ -3033,7 +3294,7 @@ export class GodelmannChatbot extends HTMLElement {
     anchor.setAttribute('aria-expanded', 'true');
     // In der Blase verankern (.msg ist position:relative) — das Menue
     // scrollt mit seiner Antwort mit.
-    const wrap = anchor.closest('.msg') ?? this.messagesEl;
+    const wrap = anchor.closest('.botcol') ?? this.messagesEl;
     wrap.appendChild(menu);
     this.langMenuEl = menu;
     this.langMenuAnchor = anchor;
@@ -3109,7 +3370,7 @@ export class GodelmannChatbot extends HTMLElement {
       // Wechsel-Turn fehlgeschlagen: leere Blase raeumen — die UI ist
       // trotzdem umgestellt, die Direktive greift ab der naechsten Frage.
       if (assistant.text === '' && assistant.el) {
-        assistant.el.remove();
+        this.removeMessageEl(assistant);
         this.messages = this.messages.filter((m) => m !== assistant);
       }
     } finally {

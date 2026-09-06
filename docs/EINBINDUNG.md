@@ -29,6 +29,14 @@
 > `lang`-Attribut bleibt die Einstiegssprache; die Wahl des Besuchers hat Vorrang und
 > gilt für die laufende Sitzung (Tab).
 
+> **Optik-Stand 0.0.20 (06.09.2026):** Layout wie der Gravelli-Chat (Design Sabrina Ansicht 2/3):
+> Kopfzeile grau mit G-Avatar, Titel „Ihr KI-Berater" und nur noch Reset (↺) + Schliessen (X) —
+> die Knoepfe „Vollbild"/„Verkleinern" gibt es nicht mehr (Drawer und `/chat`-Seite teilen die
+> Unterhaltung weiter ueber `sessionStorage`; der Wechsel geschieht ueber die Seiten-Navigation).
+> Vor dem ersten Kontakt steht eine Zustimmungskarte „Nutzungsbedingungen" (Chat starten /
+> Abbrechen); bis dahin sendet das Widget nichts. Unter dem Eingabefeld zwei Hinweiszeilen mit
+> Links auf Kontaktformular und Datenschutz (je Sprache). Akzent = Website-Rot `#E54F35`.
+>
 > **Optik-Stand 0.0.13 (04.08.2026):** Kopfzeilen-Buttons und Feedback-Leiste zeigen jetzt Icon + Text („Neue Unterhaltung", „Vollbild"/„Verkleinern", „Schließen"; „Hilfreich"/„Nicht hilfreich"/„Kommentar"), Icons in der Formensprache der godelmann.de-Site-Icons; unter 520px wieder icon-only. Akzent-Default Anthrazit. **Snippet, Attribute, Events und CSS-Properties sind unverändert (v1-stabil)** — `--gdm-chat-accent`/`--gdm-chat-accent-hover` erlauben weiterhin eigenes Theming.
 
 > Stand 2026-08-18 (Doku v1.3) · Widget-Version v1 (`chatbot-widget.v1.js`, Fassung 0.0.17) · fuer die godelmann.de-Agentur
@@ -140,6 +148,10 @@ in einen **hoehen-gebenden Container** setzt:
 Drawer und Seite teilen dieselbe Unterhaltung (gleiche Origin, gleicher
 `sessionStorage`): Punchout aus dem Drawer oeffnet `/chat`, „Verkleinern" fuehrt
 zurueck.
+
+> **Seit 0.0.20:** kein Punchout-/Verkleinern-Knopf mehr in der Kopfzeile (Design). Die Seite
+> `/chat` bleibt ueber normale Links erreichbar; Drawer und Seite teilen die Unterhaltung wie
+> zuvor ueber `sessionStorage`.
 
 > **Mobil:** Auf kleinen Displays wird der Drawer automatisch zum
 > Vollflaechen-Panel (kein Schieben) — nichts weiter zu tun.
@@ -267,7 +279,7 @@ Alle Attribute sind optional und **reaktiv** (Aenderung zur Laufzeit wirkt sofor
 | `greeting` | Freitext | Deutsche Standard-Begruessung | Eigene erste Assistenten-Nachricht beim Oeffnen des Panels. |
 | `mode` | `floating`, `drawer`, `page` | `floating` | Darstellungsform (s. o.). Unbekannte Werte fallen auf `floating` zurueck. |
 | `launcher` | `bubble`, `none` | `bubble` | `none` blendet die eigene Bubble aus; der Ausloeser ist dann Host-Markup mit `data-gdm-chat-launcher` (das Widget verdrahtet es automatisch, s. u.). |
-| `page-url` | Pfad/URL | `/chat` | Ziel des Vollbild-Wechsels aus dem Drawer (Punchout). |
+| `page-url` | Pfad/URL | `/chat` | Seit 0.0.20 ohne Funktion (kein Vollbild-Knopf mehr); wird weiter akzeptiert. |
 
 **Mehrsprachigkeit — `lang` je Seitensprache setzen:** godelmann.de ist
 zweisprachig (deutsche Seiten + `/en/...`). Das `lang`-Attribut bitte im
@@ -381,7 +393,9 @@ Fuer die Datenschutzerklaerung / den Widget-Hinweis:
 > Spam-Schutz (ALTCHA Proof-of-Work) laeuft vollstaendig self-hosted.
 
 Das Widget zeigt zusaetzlich einen permanenten Hinweis mit Link auf
-<https://www.godelmann.de/de/datenschutz> unterhalb der Eingabezeile.
+<https://www.godelmann.de/de/datenschutz> unterhalb der Eingabezeile (en: `/en/data-protection`),
+darueber der Hinweis „KI-Berater – Angaben ohne Gewaehr …“ mit Link auf das Kontaktformular
+(`/de/unternehmen/kontakt`, en `/en/company/contact-us`; cs nutzt die englischen Ziele).
 
 ## Versionierungs- und Update-Politik
 
