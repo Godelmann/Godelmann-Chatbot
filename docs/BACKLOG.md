@@ -1,6 +1,6 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-06 (Paket-Version **0.0.22**, test; prod 0.0.21 seit 17:24 Uhr)
+> Stand: 2026-09-06 (Paket-Version **0.0.22**, test UND prod seit 19:58 Uhr; Server-Prompt 62a38f8 ebenfalls beide Stufen)
 
 ## Release 0.0.22 (2026-09-06) — SI-Lauf QS-Feedback
 
