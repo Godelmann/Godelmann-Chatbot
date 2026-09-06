@@ -55,6 +55,8 @@ interface StoredSession {
   messages: StoredMessage[];
   stage: 'greeting' | 'endkunde' | 'fachkunde';
   awaitingPlz: boolean;
+  /** PLZ, zu der gerade das Land nachgefragt wird (Mehrdeutigkeit). */
+  pendingPlz?: string;
   /** Slot-Filling: wurde die einmalige Zielgruppen-Nachfrage schon gestellt? */
   zielgruppeGefragt?: boolean;
   /** QS-Sitzungs-ID fuer /api/qs/* — bleibt ueber Seitenwechsel stabil. */
@@ -252,6 +254,8 @@ interface Texts {
   contactPhone: string;
   contactNone: string;
   contactUnavailable: string;
+  /** Land-Nachfrage, wenn die PLZ in mehreren Laendern existiert ({plz} wird ersetzt). */
+  contactCountryPrompt: string;
 }
 
 const TEXTS: SprachTabelle<Texts> = {
@@ -314,6 +318,7 @@ const TEXTS: SprachTabelle<Texts> = {
     contactUnavailable:
       'Die Ansprechpartner-Suche ist gerade nicht erreichbar. Bitte versuchen ' +
       'Sie es später erneut.',
+    contactCountryPrompt: 'In welchem Land liegt die Postleitzahl {plz}? Bitte wählen Sie unten aus.',
   },
   en: {
     bubbleOpen: 'Open chat advisor',
@@ -369,6 +374,7 @@ const TEXTS: SprachTabelle<Texts> = {
       'I do not have a direct contact for this postal code yet. The GODELMANN ' +
       'advisory will be happy to help — or just ask me your technical question here.',
     contactUnavailable: 'The contact lookup is currently unavailable. Please try again later.',
+    contactCountryPrompt: 'Which country is postal code {plz} in? Please choose below.',
   },
   // Tschechisch (Erstuebersetzung 04.08. — Korrekturlesen durch tschechische
   // Kollegen offen, gleiche Review-Spur wie die Gravelli-i18n Phase 1).
@@ -426,6 +432,7 @@ const TEXTS: SprachTabelle<Texts> = {
       'K tomuto PSČ zatím nemám přímého kontaktního partnera. Poradenství ' +
       'GODELMANN vám rádo pomůže — nebo mi svou odbornou otázku položte přímo zde.',
     contactUnavailable: 'Vyhledávání kontaktů není momentálně dostupné. Zkuste to prosím později.',
+    contactCountryPrompt: 'Ve které zemi leží PSČ {plz}? Vyberte prosím níže.',
   },
 };
 
@@ -742,6 +749,16 @@ const BIN_LABELS: SprachTabelle<Record<Branch, string>> = {
   en: { fachkunde: 'I am a trade professional', endkunde: 'I am a private customer' },
   cs: { fachkunde: 'Jsem odborný zákazník', endkunde: 'Jsem soukromý zákazník' },
 };
+
+/** Antwortform von GET /api/contact (Server 06.09.2026): entweder Kontakt(e)
+ *  oder `ambiguous` mit Laender-Auswahl, wenn die PLZ in mehreren Laendern liegt. */
+interface ContactAntwort {
+  count?: number;
+  ambiguous?: boolean;
+  plz?: string;
+  countries?: Array<{ code: string; name?: Record<string, string> }>;
+  contacts?: Array<Record<string, string | null>>;
+}
 
 const PLZ_PROMPT: SprachTabelle<string> = {
   de: 'Bitte geben Sie Ihre Postleitzahl ein, dann nenne ich Ihnen Ihren zustaendigen Ansprechpartner.',
@@ -1407,6 +1424,8 @@ export class GodelmannChatbot extends HTMLElement {
   // Guided-Selling-Flow (Ablaufplan Heike): Zielgruppen-Weiche vor dem KI-Chat.
   private stage: 'greeting' | Branch = 'greeting';
   private awaitingPlz = false;
+  /** Land-Nachfrage laeuft fuer diese PLZ (Chips je Land); null = keine. */
+  private pendingPlz: string | null = null;
   /** Die EINE aktuelle Vorschlags-Chip-Reihe (Server-Followups + Zweig-Menue). */
   private suggestRow: HTMLElement | null = null;
   /** Denkzeit-Timer der kuratierten Antworten — resetConversation und
@@ -1645,6 +1664,7 @@ export class GodelmannChatbot extends HTMLElement {
       })),
       stage: this.stage,
       awaitingPlz: this.awaitingPlz,
+      ...(this.pendingPlz ? { pendingPlz: this.pendingPlz } : {}),
       ...(this.zielgruppeGefragt ? { zielgruppeGefragt: true } : {}),
       ...(this.sitzungId ? { sitzungId: this.sitzungId } : {}),
       ...(this.chatLang ? { chatLang: this.chatLang } : {}),
@@ -1725,6 +1745,7 @@ export class GodelmannChatbot extends HTMLElement {
       }
       this.stage = s.stage === 'endkunde' || s.stage === 'fachkunde' ? s.stage : 'greeting';
       this.awaitingPlz = s.awaitingPlz === true;
+      this.pendingPlz = typeof s.pendingPlz === 'string' && s.pendingPlz !== '' ? s.pendingPlz : null;
       // Alte Sitzungen (vor v0.0.9) kennen das Feld nicht -> false.
       this.zielgruppeGefragt = s.zielgruppeGefragt === true;
       // Modellwahl je Chat (test-only): vorlaeufig uebernehmen; loadConfig
@@ -2259,6 +2280,7 @@ export class GodelmannChatbot extends HTMLElement {
     this.messagesEl.replaceChildren();
     this.stage = 'greeting';
     this.awaitingPlz = false;
+    this.pendingPlz = null;
     this.suggestRow = null;
     this.zielgruppeGefragt = false;
     this.lastFollowups = [];
@@ -2587,20 +2609,32 @@ export class GodelmannChatbot extends HTMLElement {
     }
   }
 
-  /** Fachkunde-PLZ -> Ansprechpartner (GET /api/contact), deterministisch. */
-  private async lookupContact(plz: string): Promise<void> {
-    const clean = plz.replace(/\D/g, '').slice(0, 5);
+  /** Fachkunde-PLZ -> Ansprechpartner (GET /api/contact), deterministisch.
+   *  Seit 0.0.21 mit Land: Eingaben wie "AT-1010" zerlegt der Server; ist die
+   *  PLZ ohne Land mehrdeutig (1010 = Wien und Lausanne), antwortet er mit
+   *  `ambiguous` + Laender — dann fragt der Bot per Chips nach. */
+  private async lookupContact(plz: string, land?: string): Promise<void> {
+    // Normalisierung wie im Server/SQL: Grossschreibung, max. 12 Zeichen, nur
+    // Buchstaben/Ziffern/Leerzeichen/Bindestrich (Land-Praefix bleibt erhalten).
+    const clean = plz.toUpperCase().replace(/[^A-Z0-9 -]/g, '').trim().slice(0, 12);
     const t = this.texts;
+    this.pendingPlz = null;
     const pending = this.appendMessage({
       role: 'assistant',
       text: t.contactLooking,
       art: 'kuratiert',
     });
+    let nachfrage: ContactAntwort['countries'] | null = null;
     try {
-      const res = await fetch(`${this.apiBase}/api/contact?plz=${encodeURIComponent(clean)}`);
-      const data = res.ok ? ((await res.json()) as { contacts?: Array<Record<string, string>> }) : { contacts: [] };
+      const qs = new URLSearchParams({ plz: clean });
+      if (land) qs.set('land', land);
+      const res = await fetch(`${this.apiBase}/api/contact?${qs.toString()}`);
+      const data: ContactAntwort = res.ok ? ((await res.json()) as ContactAntwort) : { contacts: [] };
       const c = (data.contacts ?? [])[0];
-      if (c && c.name) {
+      if (data.ambiguous && Array.isArray(data.countries) && data.countries.length > 1) {
+        nachfrage = data.countries;
+        pending.text = t.contactCountryPrompt.replace('{plz}', data.plz ?? clean);
+      } else if (c && c.name) {
         const lines: string[] = [`**${c.name}**${c.role_title ? ` — ${c.role_title}` : ''}`];
         if (c.region) lines.push(`${t.contactRegion}: ${c.region}`);
         if (c.phone) lines.push(`${t.contactPhone}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
@@ -2619,11 +2653,33 @@ export class GodelmannChatbot extends HTMLElement {
     this.scrollToEnd();
     // Sonst haengt nach einem Seitenwechsel dauerhaft "Einen Moment, ich
     // suche ..." im Verlauf - die Antwort selbst waere nie gespeichert worden.
+    if (nachfrage) {
+      // Land-Nachfrage: Chips je Land (Namen in Chat-Sprache), Auswahl loest
+      // die Suche mit Land erneut aus. Die Chip-Reihe ist die EINE Vorschlagsreihe.
+      const plzMerken = clean.replace(/^[A-Z]{1,3}[- ]+/, '');
+      this.pendingPlz = plzMerken;
+      this.clearSuggestions();
+      const items = nachfrage.map((l) => ({
+        label: l.name?.[this.langKey] ?? l.name?.de ?? l.code,
+        onClick: () => {
+          if (this.busy) return;
+          this.clearSuggestions();
+          this.appendMessage({ role: 'user', text: l.name?.[this.langKey] ?? l.code });
+          void this.lookupContact(plzMerken, l.code);
+        },
+      }));
+      this.suggestLabels = items.map((i) => i.label);
+      this.suggestRow = this.appendQuickReplies(items);
+      this.saveSession();
+      this.queueQs(pending);
+      return;
+    }
     this.saveSession();
     this.queueQs(pending);
     // Weiterweg anbieten: die Chip-Reihe wurde beim Klick entfernt.
     this.showSuggestions([]);
   }
+
 
   /** `meta`: QS-Metadaten beim Wiederherstellen (qsId/ts/art) — sonst
    *  bekaeme dieselbe Fehlermeldung nach jedem Reload eine NEUE ID und
