@@ -1,6 +1,6 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-06 (Paket-Version **0.0.20**, test; prod 0.0.18)
+> Stand: 2026-09-06 (Paket-Version **0.0.20**, test UND prod seit 15:09 Uhr; Sicherung 20260906-130900)
 
 ## Release 0.0.20 (2026-09-06)
 
