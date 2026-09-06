@@ -448,7 +448,7 @@ type Branch = 'endkunde' | 'fachkunde';
 // Button diese (administrierbar); sonst Fallback auf die geerdete Frage `ask`.
 // `frage` = die ausformulierte Ich-/W-Frage, die beim Klick als Nutzer-Echo im
 // Verlauf erscheint (das Label bleibt der kurze Chip-Text).
-interface QuickAction { label: string; frage: string; ask?: string; special?: 'plz'; linkKey?: string }
+interface QuickAction { label: string; frage: string; ask?: string; special?: 'plz' | 'vergleich'; linkKey?: string }
 
 const BRANCH_INTRO: SprachTabelle<Record<Branch, string>> = {
   de: {
@@ -531,7 +531,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Produkte vergleichen',
         frage: 'Können Sie zwei Produkte für mich vergleichen?',
-        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+        special: 'vergleich',
       },
       {
         label: 'Haendlersuche',
@@ -572,7 +572,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Produkte vergleichen',
         frage: 'Können Sie zwei Produkte für mich vergleichen?',
-        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+        special: 'vergleich',
       },
       {
         label: 'Ansprechpartner finden',
@@ -609,6 +609,11 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
         ask: 'Where can I visit a Godelmann idea garden?',
       },
       {
+        label: 'Compare products',
+        frage: 'Can you compare two products for me?',
+        special: 'vergleich',
+      },
+      {
         label: 'Find a dealer',
         frage: 'How do I find a dealer near me?',
         ask: 'How do I find a Godelmann dealer near me?',
@@ -639,6 +644,11 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
         label: 'References',
         frage: 'Which reference projects are there?',
         ask: 'Show me Godelmann reference projects, e.g. for public spaces.',
+      },
+      {
+        label: 'Compare products',
+        frage: 'Can you compare two products for me?',
+        special: 'vergleich',
       },
       {
         label: 'Find a contact person',
@@ -685,7 +695,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Porovnat produkty',
         frage: 'Můžete pro mě porovnat dva produkty?',
-        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+        special: 'vergleich',
       },
       {
         label: 'Hledání prodejce',
@@ -726,7 +736,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Porovnat produkty',
         frage: 'Můžete pro mě porovnat dva produkty?',
-        ask: 'Vergleichen Sie zwei passende Godelmann-Produkte uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).',
+        special: 'vergleich',
       },
       {
         label: 'Najít kontaktní osobu',
@@ -765,6 +775,27 @@ const PLZ_PROMPT: SprachTabelle<string> = {
   en: 'Please enter your postal code and I will name your responsible contact person.',
   cs: 'Zadejte prosím své PSČ a já vám sdělím vašeho odpovědného kontaktního partnera.',
 };
+
+/** Produktvergleich (QS-Feedback a483285d, 18.08.): der Besucher waehlt die
+ *  beiden Produkte SELBST — kuratierte Nachfrage + Beispielpaare als Chips
+ *  statt einer vom Modell willkuerlich gewaehlten Paarung. */
+const VERGLEICH_PROMPT: SprachTabelle<string> = {
+  de: 'Gern. Welche zwei GODELMANN-Produkte möchten Sie vergleichen? Nennen Sie mir die Produktnamen und den Einsatzbereich (z. B. Einfahrt, Terrasse, Weg) — oder wählen Sie ein Beispielpaar.',
+  en: 'Gladly. Which two GODELMANN products would you like to compare? Tell me the product names and the intended use (e.g. driveway, terrace, path) — or pick an example pair.',
+  cs: 'Rád. Které dva produkty GODELMANN chcete porovnat? Napište mi názvy produktů a oblast použití (např. příjezdová cesta, terasa, chodník) — nebo zvolte ukázkovou dvojici.',
+};
+/** Beispielpaare: Produktfamilien, die in der Wissensbasis belegt sind. */
+const VERGLEICH_PAARE: [string, string][] = [
+  ['GDM.MOLINA stone', 'GDM.VIA stone'],
+  ['GDM.LIVA', 'GDM.MASSIMO'],
+  ['GDM.DRAIN', 'GDM.KLIMASTEIN'],
+];
+/** Geerdete Vergleichsanfrage (deutsch — die Embeddings sind deutsch; die
+ *  Antwortsprache steuert die Per-Turn-Direktive). */
+function vergleichsAnfrage(a: string, b: string): string {
+  return `Vergleichen Sie ${a} und ${b} uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).`;
+}
+const VERGLEICH_VS = 'vs.';
 
 /** Slot-Filling: einmalige Nachfrage, wenn die Zielgruppe nach der ersten
  *  Freitext-Antwort noch unklar ist (stage bleibt 'greeting'). */
@@ -2547,6 +2578,23 @@ export class GodelmannChatbot extends HTMLElement {
       this.appendCuratedMessage({ role: 'assistant', text: tabelle(PLZ_PROMPT, this.langKey) }, () => {
         this.awaitingPlz = true;
         this.saveSession();
+        this.input.focus();
+      });
+      return;
+    }
+    if (a.special === 'vergleich') {
+      // Produktvergleich: Nachfrage nach den ZWEI Produkten (kuratiert, kein
+      // Modell-Call) + Beispielpaare als Chips; Freitext geht danach normal
+      // an den Bot, der die genannten Produkte vergleicht.
+      this.appendMessage({ role: 'user', text: a.frage });
+      this.appendCuratedMessage({ role: 'assistant', text: tabelle(VERGLEICH_PROMPT, this.langKey) }, () => {
+        this.clearSuggestions();
+        const items = VERGLEICH_PAARE.map(([x, y]) => {
+          const label = `${x} ${VERGLEICH_VS} ${y}`;
+          return { label, onClick: () => { void this.startChat(vergleichsAnfrage(x, y), label); } };
+        });
+        this.suggestLabels = items.map((i) => i.label);
+        this.suggestRow = this.appendQuickReplies(items);
         this.input.focus();
       });
       return;

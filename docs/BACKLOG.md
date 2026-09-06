@@ -1,6 +1,27 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-06 (Paket-Version **0.0.21**, test UND prod seit 17:24 Uhr)
+> Stand: 2026-09-06 (Paket-Version **0.0.22**, test; prod 0.0.21 seit 17:24 Uhr)
+
+## Release 0.0.22 (2026-09-06) — SI-Lauf QS-Feedback
+
+- **Produktvergleich: der Besucher waehlt die Produkte selbst** (QS-Feedback a483285d, 18.08.:
+  „die beiden Produkte selbst eingeben koennen"): der Chip „Produkte vergleichen" (de/en/cs, Endkunde
+  + Fachkunde) sendet keine Modellanfrage mehr, sondern eine kuratierte Nachfrage nach den zwei
+  Produktnamen und dem Einsatzbereich plus drei Beispielpaare als Chips (`VERGLEICH_PAARE`:
+  GDM.MOLINA stone vs. GDM.VIA stone, GDM.LIVA vs. GDM.MASSIMO, GDM.DRAIN vs. GDM.KLIMASTEIN).
+  Ein Klick oder Freitext loest den Vergleich mit den genannten Produkten aus (`vergleichsAnfrage`).
+  Englisch hatte den Chip bisher gar nicht — ergaenzt.
+- **Link-Ziele in GoCreate (`webchat_links`) korrigiert/ergaenzt, test + prod:** Haendlersuche
+  → `/de/fachhaendler` (war `/de/services-tools`), Mediathek → `/de/services-tools/tools/mediathek`,
+  Inspirationen → `/de/referenzen` (altes Ziel `/de/objektplanung/themen-loesungen` = 404), neu
+  Neuheiten → `/de/produkte/aktionen-highlights/aktionen/unsere-produkt-neuheiten`, Ideengarten →
+  `/de/ideen-gaerten`; prod hatte gar keine Zeilen (Chips liefen alle ins Modell). URLs per HTTP
+  gegen godelmann.de verifiziert.
+- Server-Seite (spass `godelmann-chatbot-server`): Prompt-Regeln KONTAKTWEG (Beratung immer mit
+  Telefon +49 9438 9404-0, Zeiten, Ideen-Gaerten-Link, Fachhaendler-Suche), PRODUKTAUSWAHL (alle
+  passenden Familien nennen, z. B. GDM.KLIMASTEIN bei Versickerung), EINBAU (Fachbetrieb +
+  technische Beratung), UNTERLAGEN (Verlegemuster/Versickerungsgutachten in der Mediathek).
+  Belege und Abnahme: `GoCreate/docs/SI-LOG.md` (Lauf 06.09.).
 
 ## Release 0.0.21 (2026-09-06)
 
