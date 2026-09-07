@@ -229,14 +229,18 @@ autorisierte Domains beschraenkt:
 - `https://www.godelmann.com` · `https://godelmann.com`
 - **Salient-Entwicklung:** `https://localhost:8000` ·
   `https://god--ibexa.ddev.site`
-- **Salient-Vorschauserver:** `https://<git-branch>-walegqvpxiy74.de-2.platformsh.site`
+- **Salient-Vorschauserver:** `https://[<label>.]<git-branch>-walegqvpxiy74.de-2.platformsh.site`
   — als Muster freigeschaltet (jede Branch-Vorschau des Platformsh-Projekts
-  funktioniert automatisch, inkl. `release-stage-…`); keine Einzelmeldung
-  je Branch noetig. **Konkrete Staging-Umgebung der Agentur (Heike/Salient,
-  19.08.2026):** `https://release-stage-n72lepa-walegqvpxiy74.de-2.platformsh.site/`
-  — dort ist der Chat seit 19.08. eingebaut (Sichtpruefung der Einbindung hier,
-  nicht nur auf test.godelmann.net). Stand 06.09. 15:20: Platformsh antwortet
-  dort mit 503 „Back-end server is faulty or not available" (Agentur-Seite).
+  funktioniert automatisch, inkl. `release-stage-…` und **mit Unter-Labels wie
+  `www.`**); keine Einzelmeldung je Branch noetig. **Konkrete Staging-Umgebung der
+  Agentur (Heike/Salient):** `https://www.release-stage-n72lepa-walegqvpxiy74.de-2.platformsh.site/`
+  — dort ist der Chat seit 19.08. eingebaut. **Befund 07.09.2026 (Heike):** das Widget
+  wurde dort mit „blocked by CORS policy" abgewiesen — Ursache: die Vorschau laeuft
+  unter `www.`-Praefix, die drei Server-Freigaben (Origin-Header, API-Gate,
+  Widget-Referer) kannten das Muster nur ohne Punkt im Branch-Label. Seit 07.09.
+  12:30 UTC auf allen drei Hosts (`chatbot.godelmann.bot`, `chatbot.godelmann.net`,
+  `chatbot-test.godelmann.net`) erweitert und per curl belegt (Widget 200 + ACAO,
+  API-Preflight 204, fremde Origins weiterhin ohne Freigabe).
 
 Technisch heisst das: Die API-Endpunkte pruefen den `Origin`-Header
 (Allowlist am Server) — auf fremden Domains antwortet der Chat mit 403 und

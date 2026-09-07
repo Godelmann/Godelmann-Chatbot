@@ -2,6 +2,14 @@
 
 > Stand: 2026-09-07 (Paket-Version **0.0.23**, test UND prod; Server-Prompt 62a38f8 beide Stufen)
 
+## Betrieb 07.09.2026 — CORS-Freigabe Salient-Vorschau (kein Release)
+
+- Heikes Meldung: Widget auf `https://www.release-stage-n72lepa-…platformsh.site` blockiert (kein
+  `Access-Control-Allow-Origin`). Ursache in den Caddy-Freigaben (godelmann-prod, platform-test): das
+  platform.sh-Muster erlaubte keine Unter-Labels (`www.`). Alle drei Hosts erweitert, `.net`/`-test` von
+  Mehrfach-Wert-Matcher auf `header_regexp` umgestellt, Backups `Caddyfile.bak-20260907-*`.
+  Details `docs/EINBINDUNG.md` §Autorisierte Domains. Widget-seitig (Suffix-Pruefung) war nichts noetig.
+
 ## Release 0.0.23 (2026-09-07) — Re-Test-Sweep
 
 - **Echte Umlaute auch in den versteckten Chip-Prompts** (`ask:`-Felder, 14 Zeilen) und im
