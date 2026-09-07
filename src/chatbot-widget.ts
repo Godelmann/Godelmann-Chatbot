@@ -502,13 +502,13 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Produkte entdecken',
         frage: 'Welche Produkte gibt es?',
-        ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?',
+        ask: 'Welche Produkte bietet Godelmann für Garten, Terrasse und Einfahrt?',
       },
       {
         label: 'Inspirationen für Garten & Terrasse',
         frage: 'Wo finde ich Inspirationen für Garten und Terrasse?',
         linkKey: 'inspirationen',
-        ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.',
+        ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen für Garten und Terrasse von Godelmann.',
       },
       {
         label: 'Gartenbuch',
@@ -537,7 +537,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
         label: 'Händlersuche',
         frage: 'Wie finde ich einen Händler in meiner Nähe?',
         linkKey: 'haendlersuche',
-        ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?',
+        ask: 'Wie finde ich einen Godelmann-Händler in meiner Nähe?',
       },
       {
         label: 'Service-Hotline',
@@ -549,25 +549,25 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Produkte',
         frage: 'Welche Produkte gibt es für die Objektplanung?',
-        ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?',
+        ask: 'Welche Produkte bietet Godelmann für die Objektplanung?',
       },
       {
         label: 'Themen zur Objektplanung',
         frage: 'Welche Themen und Lösungen gibt es zur Objektplanung?',
         linkKey: 'objektplanung',
-        ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?',
+        ask: 'Welche Themen und Lösungen bietet Godelmann für die Objektplanung?',
       },
       {
         label: 'Mediathek (Downloads, Ausschreibung, BIM/CAD)',
         frage: 'Wo finde ich Ausschreibungstexte, Datenblätter und BIM/CAD-Daten?',
         linkKey: 'mediathek',
-        ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?',
+        ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblätter, BIM- und CAD-Daten?',
       },
       {
         label: 'Referenzen',
         frage: 'Welche Referenzprojekte gibt es?',
         linkKey: 'referenzen',
-        ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.',
+        ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. für öffentliche Plätze.',
       },
       {
         label: 'Produkte vergleichen',
@@ -666,13 +666,13 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Objevit produkty',
         frage: 'Jaké produkty nabízíte?',
-        ask: 'Welche Produkte bietet Godelmann fuer Garten, Terrasse und Einfahrt?',
+        ask: 'Welche Produkte bietet Godelmann für Garten, Terrasse und Einfahrt?',
       },
       {
         label: 'Inspirace pro zahradu a terasu',
         frage: 'Kde najdu inspiraci pro zahradu a terasu?',
         linkKey: 'inspirationen',
-        ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen fuer Garten und Terrasse von Godelmann.',
+        ask: 'Zeigen Sie mir Inspirationen und Gestaltungsideen für Garten und Terrasse von Godelmann.',
       },
       {
         label: 'Zahradní kniha',
@@ -701,7 +701,7 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
         label: 'Hledání prodejce',
         frage: 'Jak najdu prodejce ve svém okolí?',
         linkKey: 'haendlersuche',
-        ask: 'Wie finde ich einen Godelmann-Haendler in meiner Naehe?',
+        ask: 'Wie finde ich einen Godelmann-Händler in meiner Nähe?',
       },
       {
         label: 'Servisní linka',
@@ -713,25 +713,25 @@ const BRANCH_ACTIONS: SprachTabelle<Record<Branch, QuickAction[]>> = {
       {
         label: 'Produkty',
         frage: 'Jaké produkty jsou k dispozici pro projektování objektů?',
-        ask: 'Welche Produkte bietet Godelmann fuer die Objektplanung?',
+        ask: 'Welche Produkte bietet Godelmann für die Objektplanung?',
       },
       {
         label: 'Témata projektování objektů',
         frage: 'Jaká témata a řešení existují pro projektování objektů?',
         linkKey: 'objektplanung',
-        ask: 'Welche Themen und Loesungen bietet Godelmann fuer die Objektplanung?',
+        ask: 'Welche Themen und Lösungen bietet Godelmann für die Objektplanung?',
       },
       {
         label: 'Mediatéka (podklady, výběrová řízení, BIM/CAD)',
         frage: 'Kde najdu texty výběrových řízení, technické listy a BIM/CAD data?',
         linkKey: 'mediathek',
-        ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblaetter, BIM- und CAD-Daten?',
+        ask: 'Was finde ich in der Godelmann-Mediathek — Ausschreibungstexte, Datenblätter, BIM- und CAD-Daten?',
       },
       {
         label: 'Reference',
         frage: 'Jaké referenční projekty existují?',
         linkKey: 'referenzen',
-        ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. fuer oeffentliche Plaetze.',
+        ask: 'Zeigen Sie mir Godelmann-Referenzprojekte, z. B. für öffentliche Plätze.',
       },
       {
         label: 'Porovnat produkty',
@@ -793,7 +793,7 @@ const VERGLEICH_PAARE: [string, string][] = [
 /** Geerdete Vergleichsanfrage (deutsch — die Embeddings sind deutsch; die
  *  Antwortsprache steuert die Per-Turn-Direktive). */
 function vergleichsAnfrage(a: string, b: string): string {
-  return `Vergleichen Sie ${a} und ${b} uebersichtlich als Tabelle (Material, Format, Oberflaeche/Farbe, Einsatzbereich, Eigenschaften).`;
+  return `Vergleichen Sie ${a} und ${b} übersichtlich als Tabelle (Material, Format, Oberfläche/Farbe, Einsatzbereich, Eigenschaften).`;
 }
 const VERGLEICH_VS = 'vs.';
 
