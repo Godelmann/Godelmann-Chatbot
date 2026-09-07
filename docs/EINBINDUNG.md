@@ -229,7 +229,7 @@ autorisierte Domains beschraenkt:
 - `https://www.godelmann.com` · `https://godelmann.com`
 - **Salient-Entwicklung:** `https://localhost:8000` ·
   `https://god--ibexa.ddev.site`
-- **Salient-Vorschauserver:** `https://[<label>.]<git-branch>-walegqvpxiy74.de-2.platformsh.site`
+- **Salient-Vorschauserver:** `https://[<label>.[<label>.]]<git-branch>-walegqvpxiy74.de-2.platformsh.site` (beliebig viele Unter-Labels)
   — als Muster freigeschaltet (jede Branch-Vorschau des Platformsh-Projekts
   funktioniert automatisch, inkl. `release-stage-…` und **mit Unter-Labels wie
   `www.`**); keine Einzelmeldung je Branch noetig. **Konkrete Staging-Umgebung der
@@ -238,7 +238,7 @@ autorisierte Domains beschraenkt:
   wurde dort mit „blocked by CORS policy" abgewiesen — Ursache: die Vorschau laeuft
   unter `www.`-Praefix, die drei Server-Freigaben (Origin-Header, API-Gate,
   Widget-Referer) kannten das Muster nur ohne Punkt im Branch-Label. Seit 07.09.
-  12:30 UTC auf allen drei Hosts (`chatbot.godelmann.bot`, `chatbot.godelmann.net`,
+  14:28 UTC auf allen drei Hosts (`chatbot.godelmann.bot`, `chatbot.godelmann.net`,
   `chatbot-test.godelmann.net`) erweitert und per curl belegt (Widget 200 + ACAO,
   API-Preflight 204, fremde Origins weiterhin ohne Freigabe).
 
