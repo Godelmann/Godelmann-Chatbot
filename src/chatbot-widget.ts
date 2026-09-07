@@ -252,6 +252,8 @@ interface Texts {
   contactHeading: string;
   contactRegion: string;
   contactPhone: string;
+  /** Label, wenn der Server die Nummer als Zentrale kennzeichnet (phone_kind = zentrale). */
+  contactPhoneCentral: string;
   contactNone: string;
   contactUnavailable: string;
   /** Land-Nachfrage, wenn die PLZ in mehreren Laendern existiert ({plz} wird ersetzt). */
@@ -311,6 +313,7 @@ const TEXTS: SprachTabelle<Texts> = {
     contactHeading: 'Ihr zuständiger Ansprechpartner',
     contactRegion: 'Region',
     contactPhone: 'Telefon',
+    contactPhoneCentral: 'Zentrale',
     contactNone:
       'Zu dieser Postleitzahl habe ich aktuell keinen direkten Ansprechpartner ' +
       'hinterlegt. Die GODELMANN-Beratung hilft Ihnen gerne weiter — oder ' +
@@ -370,6 +373,7 @@ const TEXTS: SprachTabelle<Texts> = {
     contactHeading: 'Your responsible contact',
     contactRegion: 'Region',
     contactPhone: 'Phone',
+    contactPhoneCentral: 'Switchboard',
     contactNone:
       'I do not have a direct contact for this postal code yet. The GODELMANN ' +
       'advisory will be happy to help — or just ask me your technical question here.',
@@ -428,6 +432,7 @@ const TEXTS: SprachTabelle<Texts> = {
     contactHeading: 'Váš odpovědný kontaktní partner',
     contactRegion: 'Region',
     contactPhone: 'Telefon',
+    contactPhoneCentral: 'Ústředna',
     contactNone:
       'K tomuto PSČ zatím nemám přímého kontaktního partnera. Poradenství ' +
       'GODELMANN vám rádo pomůže — nebo mi svou odbornou otázku položte přímo zde.',
@@ -2685,7 +2690,7 @@ export class GodelmannChatbot extends HTMLElement {
       } else if (c && c.name) {
         const lines: string[] = [`**${c.name}**${c.role_title ? ` — ${c.role_title}` : ''}`];
         if (c.region) lines.push(`${t.contactRegion}: ${c.region}`);
-        if (c.phone) lines.push(`${t.contactPhone}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
+        if (c.phone) lines.push(`${c.phone_kind === 'zentrale' ? t.contactPhoneCentral : t.contactPhone}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
         if (c.email) lines.push(`E-Mail: [${c.email}](mailto:${c.email})`);
         pending.text = `${t.contactHeading}:\n\n${lines.join('\n')}`;
       } else {
