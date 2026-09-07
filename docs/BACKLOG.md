@@ -1,6 +1,15 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-06 (Paket-Version **0.0.22**, test UND prod seit 19:58 Uhr; Server-Prompt 62a38f8 ebenfalls beide Stufen)
+> Stand: 2026-09-07 (Paket-Version **0.0.23**, test UND prod; Server-Prompt 62a38f8 beide Stufen)
+
+## Release 0.0.23 (2026-09-07) — Re-Test-Sweep
+
+- **Echte Umlaute auch in den versteckten Chip-Prompts** (`ask:`-Felder, 14 Zeilen) und im
+  Vergleichs-Prompt („übersichtlich", „Oberfläche/Farbe"): die Texte gehen ans Modell, das die
+  Ersatzschreibweise sonst als Tabellenkopf echot (Befund Re-Test-Sweep 07.09.). Sichtbare Texte
+  waren seit 0.0.22 sauber.
+- Datenpflege ohne Release: Chip „Objektplanung" (`webchat_links`, test + prod) zeigte auf
+  `/de/objektplanung` (404) — jetzt `/de/objektplanung/ausschreibung-planung/technische-hinweise`.
 
 ## Release 0.0.22 (2026-09-06) — SI-Lauf QS-Feedback
 
