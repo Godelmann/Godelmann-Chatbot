@@ -8,9 +8,10 @@
   Migration lehnt PostgREST Transcript-Batches ab (test-Beleg 04.08.).
   Reststrecke (MaxMind/Datenschutz/cs-Review/weitere Sprachen): `WEBCHAT.md` 9.
 
-- [ ] **PLZ→Ansprechpartner-Liste fehlt auf prod** — `webchat_contacts` ist dort leer, der
-  Fachkunde-Knopf antwortet daher „kein Ansprechpartner hinterlegt". Liste kommt von
-  GODELMANN (Vertrieb).
+- [x] ~~PLZ→Ansprechpartner-Liste fehlt auf prod~~ — seit 06.09.2026 NAV-Zuordnung auf prod (GoCreate
+  ADR 0007), seit 07.09. nur Aussendienst-Codes; **09.09.2026 Kontaktweg „Innendienst zuerst"** (Heike/Silvia,
+  GDM-53): Server nennt das Innendienst-Team der Region (`webchat_contacts.gebiete`), Widget 0.0.25 zeigt bis zu
+  drei Kontakte — **test**; prod nach Abnahme. SSoT GoCreate `docs/KONTAKTDATEN.md` § Kontaktweg.
 - [ ] **Turn-Logging auf prod nicht konfiguriert** (`ai_logs.db` bleibt leer) — damit fehlt
   der Nachweis, welches Modell dort tatsaechlich antwortet.
 - [ ] **Widget-Auslieferung cacht 1 h** (`max-age=3600`): Updates erreichen Besucher

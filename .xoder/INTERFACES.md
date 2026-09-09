@@ -33,7 +33,7 @@ Skripts selbst (`new URL(import.meta.url).origin`, `chatbot-widget.ts:75`) — a
 | `POST /api/chat` | die eigentliche Frage | `message`, `lang`, `conversation_id`, `altcha`, `hp_website` (Honigtopf, immer leer) |
 | `GET /api/webchat-config` | Anzeigekonfiguration | — |
 | `GET /altcha/challenge` | Rechenaufgabe gegen Automaten | — |
-| `POST /api/contact` | Kontakt-/Anfrageformular | die eingegebenen Kontaktdaten |
+| `GET /api/contact?plz=…&land=…` | Ansprechpartner-Suche (seit 06.09.2026 NAV-Zuordnung, seit 09.09.2026 Kontaktweg Innendienst) | die eingegebene Postleitzahl (+ Land bei Nachfrage) — keine weiteren Besucherdaten |
 | `POST /api/qs/transcript` | Qualitätssicherung: Gesprächsverlauf | `sitzung_id`, `locale`, **alle Nachrichten** inkl. Sprache und Vorschlägen |
 | `POST /api/qs/feedback` | Daumen hoch/runter | Bewertung zur Nachricht |
 
