@@ -258,6 +258,10 @@ interface Texts {
   contactUnavailable: string;
   /** Land-Nachfrage, wenn die PLZ in mehreren Laendern existiert ({plz} wird ersetzt). */
   contactCountryPrompt: string;
+  /** Ueberschrift bei mehreren Kontakten (Innendienst-Team einer Region, seit 0.0.25). */
+  contactHeadingPlural: string;
+  /** Label fuer Erreichbarkeit/Oeffnungszeiten (Server: oeffnungszeiten). */
+  contactHours: string;
 }
 
 const TEXTS: SprachTabelle<Texts> = {
@@ -322,6 +326,8 @@ const TEXTS: SprachTabelle<Texts> = {
       'Die Ansprechpartner-Suche ist gerade nicht erreichbar. Bitte versuchen ' +
       'Sie es später erneut.',
     contactCountryPrompt: 'In welchem Land liegt die Postleitzahl {plz}? Bitte wählen Sie unten aus.',
+    contactHeadingPlural: 'Ihre Ansprechpartner',
+    contactHours: 'Erreichbar',
   },
   en: {
     bubbleOpen: 'Open chat advisor',
@@ -379,6 +385,8 @@ const TEXTS: SprachTabelle<Texts> = {
       'advisory will be happy to help — or just ask me your technical question here.',
     contactUnavailable: 'The contact lookup is currently unavailable. Please try again later.',
     contactCountryPrompt: 'Which country is postal code {plz} in? Please choose below.',
+    contactHeadingPlural: 'Your contacts',
+    contactHours: 'Available',
   },
   // Tschechisch (Erstuebersetzung 04.08. — Korrekturlesen durch tschechische
   // Kollegen offen, gleiche Review-Spur wie die Gravelli-i18n Phase 1).
@@ -438,6 +446,8 @@ const TEXTS: SprachTabelle<Texts> = {
       'GODELMANN vám rádo pomůže — nebo mi svou odbornou otázku položte přímo zde.',
     contactUnavailable: 'Vyhledávání kontaktů není momentálně dostupné. Zkuste to prosím později.',
     contactCountryPrompt: 'Ve které zemi leží PSČ {plz}? Vyberte prosím níže.',
+    contactHeadingPlural: 'Vaše kontaktní osoby',
+    contactHours: 'K zastižení',
   },
 };
 
@@ -770,6 +780,8 @@ const BIN_LABELS: SprachTabelle<Record<Branch, string>> = {
 interface ContactAntwort {
   count?: number;
   ambiguous?: boolean;
+  /** Seit Server 09.09.2026: "innendienst" (Standard, Team der Region) oder "aussendienst". */
+  kontaktweg?: string;
   plz?: string;
   countries?: Array<{ code: string; name?: Record<string, string> }>;
   contacts?: Array<Record<string, string | null>>;
@@ -2683,16 +2695,23 @@ export class GodelmannChatbot extends HTMLElement {
       if (land) qs.set('land', land);
       const res = await fetch(`${this.apiBase}/api/contact?${qs.toString()}`);
       const data: ContactAntwort = res.ok ? ((await res.json()) as ContactAntwort) : { contacts: [] };
-      const c = (data.contacts ?? [])[0];
+      // Kontaktweg Innendienst (seit 0.0.25, Heike/Silvia 08.09.): der Server liefert das
+      // Innendienst-Team der Region (1-3 Personen) - alle nennen, nicht nur den ersten.
+      const kontakte = (data.contacts ?? []).filter((k) => k && k.name).slice(0, 3);
       if (data.ambiguous && Array.isArray(data.countries) && data.countries.length > 1) {
         nachfrage = data.countries;
         pending.text = t.contactCountryPrompt.replace('{plz}', data.plz ?? clean);
-      } else if (c && c.name) {
-        const lines: string[] = [`**${c.name}**${c.role_title ? ` — ${c.role_title}` : ''}`];
-        if (c.region) lines.push(`${t.contactRegion}: ${c.region}`);
-        if (c.phone) lines.push(`${c.phone_kind === 'zentrale' ? t.contactPhoneCentral : t.contactPhone}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
-        if (c.email) lines.push(`E-Mail: [${c.email}](mailto:${c.email})`);
-        pending.text = `${t.contactHeading}:\n\n${lines.join('\n')}`;
+      } else if (kontakte.length > 0) {
+        const bloecke = kontakte.map((c) => {
+          const lines: string[] = [`**${c.name}**${c.role_title ? ` — ${c.role_title}` : ''}`];
+          if (c.region) lines.push(`${t.contactRegion}: ${c.region}`);
+          if (c.phone) lines.push(`${c.phone_kind === 'zentrale' ? t.contactPhoneCentral : t.contactPhone}: [${c.phone}](tel:${c.phone.replace(/[^+\d]/g, '')})`);
+          if (c.email) lines.push(`E-Mail: [${c.email}](mailto:${c.email})`);
+          if (c.oeffnungszeiten) lines.push(`${t.contactHours}: ${c.oeffnungszeiten}`);
+          return lines.join('\n');
+        });
+        const heading = kontakte.length > 1 ? t.contactHeadingPlural : t.contactHeading;
+        pending.text = `${heading}:\n\n${bloecke.join('\n\n')}`;
       } else {
         pending.text = t.contactNone;
       }

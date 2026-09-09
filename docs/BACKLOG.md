@@ -1,6 +1,15 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-07 (Paket-Version **0.0.23**, test UND prod; Server-Prompt 62a38f8 beide Stufen)
+> Stand: 2026-09-09 (Paket-Version **0.0.25**, test zuerst; Server spass a411263 Kontaktweg Innendienst; 0.0.24 = Zentrale-Label, test+prod 07.09.)
+
+## Release 0.0.25 (2026-09-09) — Ansprechpartner: Innendienst-Team der Region (Heike/Silvia 08.09., GDM-53)
+
+- Der Server (`/api/contact`) nennt bei Kontaktweg „innendienst" (Standard) statt des Außendienstlers das
+  Innendienst-Team der Region (`webchat_contacts.gebiete` = Verkäufercodes, Pflege in GoCreate). Das Widget
+  rendert alle gelieferten Kontakte (bis zu 3) untereinander, Überschrift „Ihre Ansprechpartner" bei mehreren,
+  neue Zeile „Erreichbar" aus `oeffnungszeiten`; de/en/cs (`contactHeadingPlural`, `contactHours`).
+- PLZ-Abfrage und Land-Nachfrage unverändert; `ContactAntwort.kontaktweg` nur informativ.
+- Doku: GoCreate `docs/KONTAKTDATEN.md` § Kontaktweg, WEBCHAT.md §7a.
 
 ## Betrieb 07.09.2026 — CORS-Freigabe Salient-Vorschau (kein Release)
 
