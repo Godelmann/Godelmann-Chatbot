@@ -1,6 +1,6 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-09 (Paket-Version **0.0.25**, test zuerst; Server spass a411263 Kontaktweg Innendienst; 0.0.24 = Zentrale-Label, test+prod 07.09.)
+> Stand: 2026-09-24 (Paket-Version **0.0.25**, **test + PROD** seit 24.09. 08:38 Uhr mit Vollsicherung, Go Dietmar; Server spass 2e4cf2f inkl. a411263 Kontaktweg Innendienst auf prod; prod-DB Migration 20260909120000 + 6 Innendienst-Kontakte; 0.0.24 = Zentrale-Label, test+prod 07.09.)
 
 ## Betrieb 24.09.2026 — Prod-Vorbereitung godelmann.de-Livegang (Heike: „auf jeden Fall live schalten")
 
@@ -16,7 +16,7 @@ Gemessen 24.09. (kein Release):
   Datenschutzerklaerung auf Staging nennt den Chatbot (6 Treffer), live noch nicht.
 - **godelmann.de live:** kein Tag; sendet `Content-Security-Policy-Report-Only` mit `default-src 'self' …`
   OHNE `chatbot.godelmann.bot` — bei Scharfschaltung waere Skript + API blockiert (an Salient gemeldet).
-- **Luecke prod vs test (Innendienst-Paket GDM-53, 09.09.):** prod-DB ohne Migration `20260909120000`
+- **ERLEDIGT 24.09. 08:38 (Go Dietmar, Vollsicherung gocreate + godelmann-chatbot):** Migration `20260909120000` auf prod, 6 Innendienst-Kontakte, Server-Deploy, Widget 0.0.25 prod; `/api/contact?plz=92224` → Andreas Werner (Oberpfalz, Code 12). Zuvor: prod-DB ohne Migration `20260909120000`
   (`gebiete`, `webchat_site_settings`), nur 1 Kontakt (GRAVELLI Beratung) statt 8 (5 Innendienst + Zentrale),
   Server ohne `a411263`, Widget 0.0.24 statt 0.0.25 → Chat nennt auf prod die Hauptverwaltung statt des
   Innendienst-Teams. Rollout = Migration + Kontakte + `deploy-spass.sh godelmann-chatbot --prod` +
