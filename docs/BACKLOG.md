@@ -2,6 +2,30 @@
 
 > Stand: 2026-09-09 (Paket-Version **0.0.25**, test zuerst; Server spass a411263 Kontaktweg Innendienst; 0.0.24 = Zentrale-Label, test+prod 07.09.)
 
+## Betrieb 24.09.2026 — Prod-Vorbereitung godelmann.de-Livegang (Heike: „auf jeden Fall live schalten")
+
+Gemessen 24.09. (kein Release):
+- **Prod-Dienst gesund:** `chatbot.godelmann.bot` + `chatbot.godelmann.net` liefern Widget **0.0.24** (07.09.),
+  Server-Binary vom 07.09. 19:43 (bis Commit `8de3a03`); Regressionslauf `verify-ai-channels --channel godelmann`
+  auf godelmann-prod **7/7 gruen** (inkl. cs + Injection).
+- **Origin-Gate prod:** godelmann.de/.com (mit und ohne www) + platform.sh-Suffix bekommen ACAO, fremde Origin 403.
+- **Salient-Staging** (`www.release-stage-n72lepa-…platformsh.site`) antwortet wieder 200 (503 vom 06.09. behoben):
+  Drawer-Tag auf allen DE-Seiten (`lang="de" mode="drawer" launcher="none" page-url="/de/chat-berater"`,
+  `data-uc-allowed`), Vollseite `/de/chat-berater` mit `mode="page"`; Chat im Browser gegen prod-Backend
+  gepruegt (Nutzungsbedingungen, Begruessung, Kontaktfrage beantwortet). **EN-Seiten ohne Tag, keine EN-Chatseite.**
+  Datenschutzerklaerung auf Staging nennt den Chatbot (6 Treffer), live noch nicht.
+- **godelmann.de live:** kein Tag; sendet `Content-Security-Policy-Report-Only` mit `default-src 'self' …`
+  OHNE `chatbot.godelmann.bot` — bei Scharfschaltung waere Skript + API blockiert (an Salient gemeldet).
+- **Luecke prod vs test (Innendienst-Paket GDM-53, 09.09.):** prod-DB ohne Migration `20260909120000`
+  (`gebiete`, `webchat_site_settings`), nur 1 Kontakt (GRAVELLI Beratung) statt 8 (5 Innendienst + Zentrale),
+  Server ohne `a411263`, Widget 0.0.24 statt 0.0.25 → Chat nennt auf prod die Hauptverwaltung statt des
+  Innendienst-Teams. Rollout = Migration + Kontakte + `deploy-spass.sh godelmann-chatbot --prod` +
+  `deploy-godelmann.sh chatbot --prod`, nur mit Go.
+- Falle bestaetigt: `godelmann-chatbot-server --version` STARTET eine zweite Instanz (Memory) — Streuprozess
+  auf prod sofort beendet, Dienst unbeeintraechtigt.
+- Offen Godelmann: Servicehotline 0800 4633562 (Webseite nennt sie, Tester bestreitet sie) — der Bot
+  uebernimmt sie aus dem Webinhalt.
+
 ## Release 0.0.25 (2026-09-09) — Ansprechpartner: Innendienst-Team der Region (Heike/Silvia 08.09., GDM-53)
 
 - Der Server (`/api/contact`) nennt bei Kontaktweg „innendienst" (Standard) statt des Außendienstlers das
