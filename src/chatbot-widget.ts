@@ -1310,6 +1310,18 @@ const STYLE = /* css */ `
   /* --- Launcher aus (Rail-Einbindung stellt einen eigenen Ausloeser) --- */
   .root.launcher-none .bubble { display: none; }
 
+  /* --- Abdunkelung (overlay="dim"): liegt unter dem Panel, ueber dem Wirt --- */
+  .backdrop { display: none; }
+  .root.mode-drawer.overlay-dim .backdrop:not([hidden]) {
+    display: block; position: fixed; inset: 0; z-index: var(--_z);
+    background: var(--gdm-chat-backdrop, rgba(0, 0, 0, 0.45));
+    animation: gdm-backdrop-in 0.4s ease-out both;
+  }
+  @keyframes gdm-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .root.mode-drawer.overlay-dim .backdrop:not([hidden]) { animation: none; }
+  }
+
   /* --- Drawer-Modus: rechte Vollhoehen-Spalte ("Skyscraper") --- */
   .root.mode-drawer .panel {
     position: fixed; top: 0; right: 0; bottom: 0; left: auto;
@@ -1433,7 +1445,7 @@ const railHandlers = new WeakMap<HTMLElement, (e: Event) => void>();
 
 export class GodelmannChatbot extends HTMLElement {
   static get observedAttributes(): string[] {
-    return ['lang', 'position', 'api-base', 'greeting', 'mode', 'launcher', 'page-url'];
+    return ['lang', 'position', 'api-base', 'greeting', 'mode', 'launcher', 'page-url', 'overlay'];
   }
 
   private readonly root: ShadowRoot;
@@ -1522,6 +1534,8 @@ export class GodelmannChatbot extends HTMLElement {
   private docHandlers: { open: () => void; close: () => void; toggle: () => void } | null = null;
   /** Ist der Wirt gerade geschoben (Drawer offen, Desktop)? Fuer Zuruecknahme. */
   private hostPushed = false;
+  /** Abdunkel-Flaeche hinter dem Drawer (nur bei overlay="dim"). */
+  private backdrop!: HTMLDivElement;
   /** Vorheriger inline `overflow-x` von <html> — beim Schliessen wiederhergestellt. */
   private prevHtmlOverflowX: string | null = null;
   /** QS-Sitzungs-ID fuer /api/qs/* — je Unterhaltung; "Neue Unterhaltung"
@@ -1589,6 +1603,14 @@ export class GodelmannChatbot extends HTMLElement {
   private get mode(): 'floating' | 'drawer' | 'page' {
     const m = (this.getAttribute('mode') ?? 'floating').toLowerCase();
     return m === 'drawer' || m === 'page' ? m : 'floating';
+  }
+
+  /** Wie der Drawer mit dem Wirt umgeht (0.0.26, Salient 25.09.2026):
+   *  `push` (Default, v1-Verhalten) schiebt die Seite ueber margin-right am
+   *  <html> schmaler; `dim` laesst die Seite stehen, legt den Drawer darueber
+   *  und dunkelt den Wirt ab (Klick auf die Flaeche schliesst). */
+  private get overlayKind(): 'push' | 'dim' {
+    return (this.getAttribute('overlay') ?? 'push').toLowerCase() === 'dim' ? 'dim' : 'push';
   }
 
   /** Eigener Ausloeser (`bubble`, Default) oder keiner (`none`, Rail-Einbindung). */
@@ -1663,6 +1685,7 @@ export class GodelmannChatbot extends HTMLElement {
       this.sendBtn.disabled = false;
     }
     this.applyHostPush(false);
+    this.setBackdrop(false);
     this.discRo?.disconnect();
     this.discRo = null;
     if (this.docHandlers) {
@@ -1852,6 +1875,14 @@ export class GodelmannChatbot extends HTMLElement {
       case 'mode':
         this.applyMode();
         break;
+      case 'overlay':
+        // Wechsel bei offenem Drawer: Schub bzw. Abdunkelung sauber umschalten.
+        this.applyMode();
+        if (this.isOpen && this.mode === 'drawer' && !this.isCompact) {
+          this.applyHostPush(this.overlayKind === 'push');
+          this.setBackdrop(this.overlayKind === 'dim');
+        }
+        break;
       case 'launcher':
         // Wechsel bubble<->none: Bubble ein-/ausblenden und Rail neu verdrahten.
         this.applyMode();
@@ -2011,7 +2042,11 @@ export class GodelmannChatbot extends HTMLElement {
     }
 
     this.panel.append(header, this.consentEl, this.messagesEl, this.form);
-    this.rootDiv.append(this.bubbleBtn, this.panel);
+    this.backdrop = document.createElement('div');
+    this.backdrop.className = 'backdrop';
+    this.backdrop.hidden = true;
+    this.backdrop.addEventListener('click', () => this.close());
+    this.rootDiv.append(this.bubbleBtn, this.backdrop, this.panel);
     this.root.appendChild(this.rootDiv);
   }
 
@@ -2137,8 +2172,12 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-expanded', 'true');
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleClose);
     this.syncLauncherState();
-    // Drawer schiebt den Wirt schmaler (nur Desktop); Seite/floating nicht.
-    if (this.mode === 'drawer' && !this.isCompact) this.applyHostPush(true);
+    // Drawer: Wirt schmaler schieben (push) ODER abdunkeln (dim) — nur Desktop;
+    // Seite/floating nicht.
+    if (this.mode === 'drawer' && !this.isCompact) {
+      if (this.overlayKind === 'dim') this.setBackdrop(true);
+      else this.applyHostPush(true);
+    }
     // Zustimmungskarte gated ALLES Weitere (Begruessung, Config, ALTCHA):
     // vor "Chat starten" verlaesst keine Anfrage das Widget.
     this.renderConsentState();
@@ -2186,6 +2225,7 @@ export class GodelmannChatbot extends HTMLElement {
     this.bubbleBtn.setAttribute('aria-label', this.texts.bubbleOpen);
     this.syncLauncherState();
     this.applyHostPush(false);
+    this.setBackdrop(false);
     // Fokus nur auf einen sichtbaren eigenen Ausloeser zuruecklegen (floating);
     // bei Rail-Einbindung (Launcher im Wirt) gibt es hier nichts zu fokussieren.
     if (this.launcherKind === 'bubble' && !this.bubbleBtn.hidden) this.bubbleBtn.focus();
@@ -2203,11 +2243,19 @@ export class GodelmannChatbot extends HTMLElement {
     this.rootDiv.classList.toggle('mode-drawer', m === 'drawer');
     this.rootDiv.classList.toggle('mode-page', m === 'page');
     this.rootDiv.classList.toggle('launcher-none', this.launcherKind === 'none');
+    this.rootDiv.classList.toggle('overlay-dim', this.overlayKind === 'dim');
     // Schliessen nicht auf der Seite, Bubble nur bei launcher="bubble" und
     // nicht im Seiten-Modus (Vollbild-/Verkleinern-Knoepfe entfielen 0.0.20).
     this.closeBtn.hidden = m === 'page';
     this.bubbleBtn.hidden = this.launcherKind === 'none' || m === 'page';
     if (m === 'page') this.open(false, false);
+  }
+
+  /** Abdunkel-Flaeche ein-/ausblenden (overlay="dim"). Kein Eingriff in den
+   *  Wirt: die Seite bleibt an Ort und Stelle, scrollt aber nicht mit. */
+  private setBackdrop(on: boolean): void {
+    if (this.backdrop.hidden === !on) return;
+    this.backdrop.hidden = !on;
   }
 
   /** Wirt (godelmann.de) schmaler schieben, solange der Drawer offen ist.

@@ -53,9 +53,10 @@ Es kennt seit 0.0.8 **drei Darstellungsformen** (Attribut `mode`), alle mit
 demselben Snippet und derselben Unterhaltung:
 
 - **`floating`** (Default) — schwebende Bubble unten rechts (bisheriges Verhalten, unveraendert).
-- **`drawer`** — rechter Seiten-Drawer, der die Seite sanft schmaler schiebt (kein
-  Abdunkeln, Seite bleibt bedienbar); Ausloeser ist ein eigenes Element in der Seite
-  (z. B. das Utility-Rail-Item), Vollbild-Wechsel auf eine eigene Seite.
+- **`drawer`** — rechter Seiten-Drawer. Mit `overlay="push"` (Default) schiebt er die Seite
+  sanft schmaler (kein Abdunkeln, Seite bleibt bedienbar); mit `overlay="dim"` (seit 0.0.26)
+  liegt er ueber der Seite und dunkelt sie ab, wie ein Menue-Einschub. Ausloeser ist ein
+  eigenes Element in der Seite (z. B. das Utility-Rail-Item), Vollbild-Wechsel auf eine eigene Seite.
 - **`page`** — der Chat fuellt einen Container als eigene (Unter-)Seite.
 
 **Alles bleibt v1** (additiv): Wer nur das 2-Zeilen-Snippet nutzt, bekommt
@@ -290,6 +291,7 @@ Alle Attribute sind optional und **reaktiv** (Aenderung zur Laufzeit wirkt sofor
 | `mode` | `floating`, `drawer`, `page` | `floating` | Darstellungsform (s. o.). Unbekannte Werte fallen auf `floating` zurueck. |
 | `launcher` | `bubble`, `none` | `bubble` | `none` blendet die eigene Bubble aus; der Ausloeser ist dann Host-Markup mit `data-gdm-chat-launcher` (das Widget verdrahtet es automatisch, s. u.). |
 | `page-url` | Pfad/URL | `/chat` | Seit 0.0.20 ohne Funktion (kein Vollbild-Knopf mehr); wird weiter akzeptiert. |
+| `overlay` | `push`, `dim` | `push` | Nur `mode="drawer"`, Desktop: `push` schiebt die Seite ueber `margin-right` am `<html>` schmaler (v1-Verhalten, braucht die Support-CSS-Regel fuer Header/Rail); `dim` laesst die Seite stehen, legt den Drawer darueber und dunkelt den Wirt ab (`--gdm-chat-backdrop`, Default `rgba(0,0,0,.45)`; Klick auf die Flaeche schliesst). Seit 0.0.26 — Entscheid der Optik liegt bei GODELMANN. |
 
 **Mehrsprachigkeit — `lang` je Seitensprache setzen:** godelmann.de ist
 zweisprachig (deutsche Seiten + `/en/...`). Das `lang`-Attribut bitte im

@@ -1,6 +1,17 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-24 (Paket-Version **0.0.25**, **test + PROD** seit 24.09. 08:38 Uhr mit Vollsicherung, Go Dietmar; Server spass 2e4cf2f inkl. a411263 Kontaktweg Innendienst auf prod; prod-DB Migration 20260909120000 + 6 Innendienst-Kontakte; 0.0.24 = Zentrale-Label, test+prod 07.09.)
+> Stand: 2026-09-28 (Paket-Version **0.0.26**, test zuerst — Overlay-Schalter fuer den Drawer; 0.0.25 **test + PROD** seit 24.09. 08:38 Uhr mit Vollsicherung, Go Dietmar; Server spass 2e4cf2f inkl. a411263 Kontaktweg Innendienst auf prod; prod-DB Migration 20260909120000 + 6 Innendienst-Kontakte; 0.0.24 = Zentrale-Label, test+prod 07.09.)
+
+## Release 0.0.26 (2026-09-28) — Drawer wahlweise ueber der Seite mit Abdunkelung (Salient, Kai Lochbaum 25.09.)
+
+- Neues Attribut **`overlay="push" | "dim"`** (Default `push` = bisheriges Verhalten, v1-stabil): `dim`
+  setzt keinen `margin-right` am `<html>`, legt den Drawer ueber die Seite und blendet eine
+  Abdunkel-Flaeche im Shadow DOM ein (`--gdm-chat-backdrop`, Klick schliesst). Nur Desktop-Drawer;
+  mobil bleibt das Vollflaechen-Panel, `page`/`floating` unveraendert. Reaktiv (Wechsel bei offenem Chat).
+- Anlass: Salient will den Chat wie das Hamburger-Menue ueber die Seite legen und abdimmen; die Optik
+  entscheidet GODELMANN. Beide Varianten auf test.godelmann.net vergleichbar: `?chat=dim` / `?chat=push`
+  (Godelmann-Proxy merkt sich die Wahl im Browser).
+- Doku: EINBINDUNG.md Attribut-Tabelle + Darstellungsformen.
 
 ## Betrieb 24.09.2026 — Prod-Vorbereitung godelmann.de-Livegang (Heike: „auf jeden Fall live schalten")
 
