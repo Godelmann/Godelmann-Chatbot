@@ -76,6 +76,9 @@ interface StoredSession {
   focused?: boolean;
 }
 const REQUEST_TIMEOUT_MS = 120_000;
+/** Zwischenstatus in der wartenden Antwort-Blase (ms nach dem Absenden). */
+const STATUS_SUCHE_MS = 4000;
+const STATUS_ANTWORT_MS = 13000;
 const MAX_MESSAGE_CHARS = 2000;
 /** Rechtliche Ziele je Sprache (hreflang der Site, belegt 06.09.2026).
  *  godelmann.de hat keine tschechische Fassung -> x-default (en) via tabelle(). */
@@ -247,6 +250,9 @@ interface Texts {
   langMenu: string;
   /** Kuratierte Link-Antwort („Gerne — hier entlang: …") */
   hereYouGo: string;
+  /** Zwischenstatus waehrend einer laengeren Modell-Antwort (seit 0.0.28) */
+  statusSearching: string;
+  statusComposing: string;
   /** Ansprechpartner-Suche (PLZ -> /api/contact) */
   contactLooking: string;
   contactHeading: string;
@@ -313,6 +319,8 @@ const TEXTS: SprachTabelle<Texts> = {
     modelDefault: 'Standard',
     langMenu: 'Antwortsprache wählen',
     hereYouGo: 'Gerne — hier entlang',
+    statusSearching: 'Ich suche in den Produktunterlagen …',
+    statusComposing: 'Ich stelle die Antwort zusammen …',
     contactLooking: 'Einen Moment, ich suche Ihren Ansprechpartner …',
     contactHeading: 'Ihr zuständiger Ansprechpartner',
     contactRegion: 'Region',
@@ -375,6 +383,8 @@ const TEXTS: SprachTabelle<Texts> = {
     modelDefault: 'Default',
     langMenu: 'Choose reply language',
     hereYouGo: 'Here you go',
+    statusSearching: 'Searching the product documentation …',
+    statusComposing: 'Putting the answer together …',
     contactLooking: 'One moment, looking up your contact …',
     contactHeading: 'Your responsible contact',
     contactRegion: 'Region',
@@ -436,6 +446,8 @@ const TEXTS: SprachTabelle<Texts> = {
     modelDefault: 'Výchozí',
     langMenu: 'Zvolit jazyk odpovědí',
     hereYouGo: 'Tudy prosím',
+    statusSearching: 'Hledám v produktových podkladech …',
+    statusComposing: 'Připravuji odpověď …',
     contactLooking: 'Okamžik, hledám vašeho kontaktního partnera …',
     contactHeading: 'Váš odpovědný kontaktní partner',
     contactRegion: 'Region',
@@ -835,6 +847,12 @@ const ZIELGRUPPEN_NACHFRAGE: SprachTabelle<string> = {
 const FACHKUNDE_KW = ['ausschreibung', 'lv ', 'bim', 'cad', 'dwg', 'architekt', 'planer', 'objekt', 'projekt', 'ingenieur', 'datenblatt', 'fachkunde', 'gewerblich', 'ausschreibungstext'];
 const ENDKUNDE_KW = ['terrasse', 'garten', 'einfahrt', 'gestaltung', 'ideen', 'hausbau', 'aussenanlage', 'aussenbereich', 'privat', 'endkunde', 'haus '];
 
+/** Nackte Postleitzahl (4 oder 5 Ziffern), optional mit Laenderkuerzel davor:
+ *  "92269", "AT-1010", "CH 8000". Kein Fliesstext, keine Hausnummern-Saetze. */
+export function istNacktePlz(text: string): boolean {
+  return /^(?:[A-Za-z]{1,2}[ -]?)?\d{4,5}$/.test(text.trim());
+}
+
 function classifyBranch(text: string): Branch | null {
   const t = ` ${text.toLowerCase()} `;
   if (FACHKUNDE_KW.some((k) => t.includes(k))) return 'fachkunde';
@@ -1232,6 +1250,12 @@ const STYLE = /* css */ `
     margin: 0 0 0 0; background: var(--_muted);
     box-shadow: 10px 0 0 var(--_muted), 20px 0 0 var(--_muted);
     animation: gdm-pulse 1.4s ease-in-out infinite;
+  }
+  /* Zwischenstatus (seit 0.0.28): Produktfragen brauchen 10-20 s — nach einigen
+     Sekunden sagt die Blase, was gerade passiert, statt nur zu pulsieren. */
+  .msg.pending[data-status]::before {
+    content: attr(data-status); display: block; margin: 0 0 8px 0;
+    color: var(--_muted); font-size: 0.92em;
   }
   .msg.greeting.pending::after { background: rgba(255,255,255,.7); box-shadow: 10px 0 0 rgba(255,255,255,.7), 20px 0 0 rgba(255,255,255,.7); }
   @keyframes gdm-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
@@ -2891,6 +2915,19 @@ export class GodelmannChatbot extends HTMLElement {
       return;
     }
 
+    // Reine Postleitzahl als Freitext (seit 0.0.28, fuer ALLE Zielgruppen):
+    // Der Berater bietet bei Preis-, Angebots- und Kontaktfragen an, einfach die
+    // Postleitzahl in den Chat zu schreiben. Vorher verwies er auf die
+    // Schaltflaeche „Ansprechpartner finden", die nur der Fachkunden-Zweig
+    // zeigt — Privatkunden liefen ins Leere (Befund Livegang-Test 02.10.2026).
+    // Bewusst eng: nur eine nackte 4-/5-stellige PLZ, optional mit Land-Praefix
+    // ("AT-1010", "CH 8000"). Alles andere geht wie bisher an das Modell.
+    if (istNacktePlz(text)) {
+      this.appendMessage({ role: 'user', text });
+      void this.lookupContact(text);
+      return;
+    }
+
     // Begruessung: Freitext -> Zielgruppe automatisch erkennen (Heikes
     // Stichwortlisten). Ohne Treffer bleibt die Stufe 'greeting' — nach der
     // Antwort fasst der Assistent EINMAL gezielt nach (Slot-Filling,
@@ -2922,6 +2959,18 @@ export class GodelmannChatbot extends HTMLElement {
     this.emit('gdm-chat:message-sent', { message: text });
     const assistant = this.appendMessage({ role: 'assistant', text: '' });
     assistant.el?.classList.add('pending');
+    // Zwischenstatus: rein clientseitig per Timer (der Server liefert die
+    // Antwort am Stueck). Die Schwellen folgen der Messung vom 02.10.2026:
+    // eine Suchrunde ~8 s, die Schlussantwort weitere ~8-12 s.
+    const statusEl = assistant.el;
+    const statusTimer = [
+      window.setTimeout(() => {
+        if (statusEl?.classList.contains('pending')) statusEl.setAttribute('data-status', this.texts.statusSearching);
+      }, STATUS_SUCHE_MS),
+      window.setTimeout(() => {
+        if (statusEl?.classList.contains('pending')) statusEl.setAttribute('data-status', this.texts.statusComposing);
+      }, STATUS_ANTWORT_MS),
+    ];
 
     let ok = false;
     try {
@@ -2948,6 +2997,8 @@ export class GodelmannChatbot extends HTMLElement {
       const retryable = kind === 'network' || kind === 'timeout' || kind === 'generic' || kind === 'captcha';
       this.appendErrorMessage(msg, retryable ? text : undefined);
     } finally {
+      statusTimer.forEach((t) => window.clearTimeout(t));
+      statusEl?.removeAttribute('data-status');
       assistant.el?.classList.remove('pending');
       this.busy = false;
       this.sendBtn.disabled = false;

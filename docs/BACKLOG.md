@@ -1,6 +1,19 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-10-02 (Paket-Version **0.0.27** — Drawer-Hoehe auf sichtbare Hoehe, iOS; 0.0.26 **test + PROD** seit 02.10. 09:45 Uhr mit Vollsicherung, Go Dietmar, Overlay-Schalter `dim` = Entscheidung Heike 30.09.; Livegang www.godelmann.de durch Salient am 02.10. vorbereitet; prod `CHATBOT_RATE_MAX=60`; 0.0.25 test+PROD 24.09.; Server spass 2e4cf2f inkl. a411263)
+> Stand: 2026-10-02 (Paket-Version **0.0.28** — nackte Postleitzahl im Freitext fuehrt fuer alle Zielgruppen zum Ansprechpartner; 0.0.27 **test + PROD** seit 02.10. 10:01 Uhr, Drawer-Hoehe 100dvh; 0.0.26 Overlay `dim` = Entscheidung Heike 30.09.; prod `CHATBOT_RATE_MAX=60`; Livegang www.godelmann.de durch Salient in Vorbereitung)
+
+## Release 0.0.28 (2026-10-02) — Postleitzahl im Freitext fuehrt zum Ansprechpartner (alle Zielgruppen)
+
+- `submitInput`: eine nackte 4-/5-stellige Postleitzahl (optional mit Land-Praefix) loest die deterministische
+  Ansprechpartner-Suche (`/api/contact`) aus — bisher nur nach dem Fachkunden-Knopf „Ansprechpartner finden".
+- Anlass (Livegang-Test 02.10.): der Berater verwies Privatkunden auf eben diese Schaltflaeche, die sie nicht
+  sehen. Server-Prompt gleichzeitig umgestellt (spass): „Postleitzahl in den Chat schreiben", **keine Preise**
+  mehr nennen (Entscheidung Dietmar 02.10.: bei GODELMANN nie Preise, stattdessen Kontakt zum Vertrieb anbieten —
+  im Unterschied zum Gravelli-Shop), klare Ablehnung statt „gleich noch einmal" bei abgewiesener Eingabe,
+  Quellen-Ueberschrift je Sprache.
+- **Zwischenstatus in der wartenden Blase** (nach 4 s „Ich suche in den Produktunterlagen …", nach 13 s „Ich stelle die
+  Antwort zusammen …", de/en/cs; rein clientseitig). Messung 02.10.: jede Suchrunde ~8 s, Produktfragen 24–36 s; der
+  Server begrenzt gleichzeitig auf eine Suchrunde mit mehr Treffern und kuerzere Antworten.
 
 ## Release 0.0.27 (2026-10-02) — Drawer-Hoehe folgt der sichtbaren Hoehe (iPhone)
 
