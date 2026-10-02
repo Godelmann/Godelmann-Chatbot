@@ -28,6 +28,26 @@
   (Zustand je Tab) — mit Godelmann/Salient klaeren, ob gewollt; Caddy-Snapshot `godelmann-prod.Caddyfile`
   im platform-control-Repo ist gegenueber dem Live-Gate veraltet → neu ziehen.
 
+## Betrieb 02.10.2026 (Nachtrag) — 0.0.27 + Limit 60 auf PROD, zweite Gegenprobe
+
+- **0.0.27 auf test + PROD 02.10. 10:01 Uhr** (Vollsicherung `backups/20261002-080138`), beide prod-Hosts und test
+  byte-identisch (SHA-256 `8c4c9067…cd7653`, 98 799 Byte). Regression auf godelmann-prod nach dem Neustart erneut **7/7 gruen**.
+- **prod `CHATBOT_RATE_MAX=60`** (`.env` Zeile 9, vorher Default 10; Sicherung `.env.bak-20261002`), vom laufenden Prozess geladen.
+- **Staging mit 0.0.27 im Browser:** Link „Chat-Berater" (`data-gdm-chat-launcher`) oeffnet/schliesst den Drawer, Abdunkelung
+  sichtbar, Panel = Fensterhoehe, Seite nicht geschoben.
+- **Rueckfall auf 0.0.25** (nur statische Dateien, kein Neustart, **ohne `--delete`** — der Ordner hat keine `index.html`):
+  `ssh godelmann-prod "rsync -a /opt/godelmann-chatbot/backups/20261002-074547/dist-0.0.25/ /opt/godelmann-chatbot/dist/"`;
+  Wirkung wegen `max-age=3600` bis zu 1 h verzoegert.
+- **Offen aus der zweiten Gegenprobe (kein Blocker):**
+  - `chatbot.godelmann.net` hat **kein** `@apifremd`-Gate (fremder Origin: API 200, POST erreicht das Backend); nur `.bot`
+    weist Fremde mit 403 ab. Salient laedt `.bot`. → Gate in den `.net`-vhost uebernehmen oder bewusst dokumentieren.
+  - **Keine globale Tagesobergrenze / kein Tokenbudget**; Limiter nur im Arbeitsspeicher. Nach dem Livegang das
+    `ai_logs`-Volumen taeglich ansehen, mittelfristig globale Obergrenze + Alarm.
+  - Schwebender Standardmodus nutzt noch `max-height: calc(100vh - 120px)` (nicht die Salient-Einbindung) → `100dvh` nachziehen.
+  - Versions-Watcher meldet `fe=godelmann-chatbot-unknown`; Expose-Header `.net`/`.bot` ungleich; Kommentar in `main.rs` Z. 41–43 veraltet.
+  - Sprachwechsel der Website mitten im Gespraech: bisherige Nachrichten bleiben in der alten Sprache, Knoepfe wechseln.
+  - Geraetetest iPhone-Safari steht aus (Dietmar, Staging).
+
 ## Release 0.0.26 (2026-09-28) — Drawer wahlweise ueber der Seite mit Abdunkelung (Salient, Kai Lochbaum 25.09.)
 
 - Neues Attribut **`overlay="push" | "dim"`** (Default `push` = bisheriges Verhalten, v1-stabil): `dim`
