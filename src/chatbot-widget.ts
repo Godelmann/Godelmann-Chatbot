@@ -1326,7 +1326,12 @@ const STYLE = /* css */ `
   .root.mode-drawer .panel {
     position: fixed; top: 0; right: 0; bottom: 0; left: auto;
     width: var(--_drawer-w); max-width: 100vw;
-    height: 100vh; max-height: none;
+    /* 100dvh = SICHTBARE Hoehe. Auf iOS Safari ist 100vh hoeher als der sichtbare
+       Bereich (Adress-/Werkzeugleiste), die Eingabezeile laege dann unter der
+       Browserleiste. Diese Regel schlaegt per Spezifitaet auch die Kompakt-
+       Media-Query (height: 100%) — sie gilt also auch auf dem Telefon.
+       100vh bleibt als Rueckfall fuer Browser ohne dvh (vor 2022). */
+    height: 100vh; height: 100dvh; max-height: none;
     border-radius: 0;
     box-shadow: -8px 0 40px rgba(0, 0, 0, 0.18);
   }
@@ -2252,7 +2257,9 @@ export class GodelmannChatbot extends HTMLElement {
   }
 
   /** Abdunkel-Flaeche ein-/ausblenden (overlay="dim"). Kein Eingriff in den
-   *  Wirt: die Seite bleibt an Ort und Stelle, scrollt aber nicht mit. */
+   *  Wirt: die Seite bleibt an Ort und Stelle. Eine Scroll-Sperre gibt es
+   *  bewusst NICHT — die Seite laesst sich hinter der Abdunkelung weiter
+   *  scrollen (Gegenprobe 02.10.2026; offener Punkt im BACKLOG). */
   private setBackdrop(on: boolean): void {
     if (this.backdrop.hidden === !on) return;
     this.backdrop.hidden = !on;

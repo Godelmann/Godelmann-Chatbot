@@ -1,6 +1,32 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-09-28 (Paket-Version **0.0.26**, test zuerst — Overlay-Schalter fuer den Drawer; 0.0.25 **test + PROD** seit 24.09. 08:38 Uhr mit Vollsicherung, Go Dietmar; Server spass 2e4cf2f inkl. a411263 Kontaktweg Innendienst auf prod; prod-DB Migration 20260909120000 + 6 Innendienst-Kontakte; 0.0.24 = Zentrale-Label, test+prod 07.09.)
+> Stand: 2026-10-02 (Paket-Version **0.0.27** — Drawer-Hoehe auf sichtbare Hoehe, iOS; 0.0.26 **test + PROD** seit 02.10. 09:45 Uhr mit Vollsicherung, Go Dietmar, Overlay-Schalter `dim` = Entscheidung Heike 30.09.; Livegang www.godelmann.de durch Salient am 02.10. vorbereitet; prod `CHATBOT_RATE_MAX=60`; 0.0.25 test+PROD 24.09.; Server spass 2e4cf2f inkl. a411263)
+
+## Release 0.0.27 (2026-10-02) — Drawer-Hoehe folgt der sichtbaren Hoehe (iPhone)
+
+- `.root.mode-drawer .panel`: `height: 100dvh` (Rueckfall `100vh`). Die Drawer-Regel schlaegt die
+  Kompakt-Media-Query per Spezifitaet; mit `100vh` konnte die Eingabezeile auf iOS Safari unter der
+  Browserleiste liegen. Befund der Gegenprobe vor dem Livegang (aus dem Code abgeleitet, vorsorglich
+  behoben — Entscheidung Dietmar 02.10.). Besteht seit dem Drawer-Modus, nicht neu in 0.0.26.
+
+## Betrieb 02.10.2026 — Livegang-Vorbereitung www.godelmann.de (Salient schaltet, Heike: Variante `dim`)
+
+- **0.0.26 auf PROD 02.10. 09:45 Uhr** (Vollsicherung `backups/20261002-074547`, Dienst danach ein Prozess).
+  Regression `verify-ai-channels --channel godelmann` auf godelmann-prod **7/7 gruen**.
+- **Salient-Staging laedt bereits den Produktiv-Host** (`chatbot.godelmann.bot`), Tag `mode="drawer"
+  launcher="none" overlay="dim"`, Chat-Seiten `mode="page"`. Im Browser gemessen: Abdunkelung sichtbar,
+  Seitenbreite unveraendert, deutsche Frage mit Quellen + Kontaktweg beantwortet, `/en/` englisch.
+- **Gegenprobe (zweiter Agent), kein Blocker.** Eingearbeitet: (1) die Vollsicherung enthaelt **kein**
+  `dist` — Rueckfall-Bundle 0.0.25 neu gebaut und unter `backups/20261002-074547/dist-0.0.25/` abgelegt;
+  (2) Chat-Limit je IP 10/10 min war fuer Firmenanschluesse zu eng → prod `CHATBOT_RATE_MAX=60` wie test;
+  (3) iOS-Hoehe → 0.0.27.
+- **Offen / an Godelmann + Salient gemeldet:** englische Datenschutzseite `/en/data-protection` erwaehnt den
+  Chatbot nicht (deutsche schon); Salients CSP laeuft als Report-Only **ohne** `chatbot.godelmann.bot`
+  (blockiert nichts, erzeugt Reports — vor einem Scharfschalten aufnehmen).
+- **Offen (klein, nach dem Livegang):** keine Scroll-Sperre hinter der Abdunkelung; ESC schliesst nur bei
+  Fokus im Panel, kein Fokus-Trap; ein offener Drawer oeffnet sich auf jeder Folgeseite wieder abgedunkelt
+  (Zustand je Tab) — mit Godelmann/Salient klaeren, ob gewollt; Caddy-Snapshot `godelmann-prod.Caddyfile`
+  im platform-control-Repo ist gegenueber dem Live-Gate veraltet → neu ziehen.
 
 ## Release 0.0.26 (2026-09-28) — Drawer wahlweise ueber der Seite mit Abdunkelung (Salient, Kai Lochbaum 25.09.)
 
