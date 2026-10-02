@@ -1,6 +1,26 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-10-02 (Paket-Version **0.0.28** — nackte Postleitzahl im Freitext fuehrt fuer alle Zielgruppen zum Ansprechpartner; 0.0.27 **test + PROD** seit 02.10. 10:01 Uhr, Drawer-Hoehe 100dvh; 0.0.26 Overlay `dim` = Entscheidung Heike 30.09.; prod `CHATBOT_RATE_MAX=60`; Livegang www.godelmann.de durch Salient in Vorbereitung)
+> Stand: 2026-10-02 (Paket-Version **0.0.28 test + PROD** seit 02.10. 11:26 Uhr mit Vollsicherung, Go Dietmar — Postleitzahl im Freitext, Zwischenstatus, Drawer-Hoehe 100dvh, Overlay `dim`; Server spass `5b874a7` test + PROD: keine Preise, Ablehnungstext, lokalisierte Quellen; prod `CHATBOT_RATE_MAX=60`, `EVAL_READ_TOKEN` gesetzt, Origin-Gate auch auf chatbot.godelmann.net; Livegang www.godelmann.de durch Salient: von uns freigegeben 02.10.)
+
+## Betrieb 02.10.2026 (Abschluss) — Server + Widget 0.0.28 auf PROD, Betriebspunkte erledigt
+
+- **PROD 11:26 Uhr:** Widget 0.0.28 (`ca6d1c8`) und Chat-Server spass `5b874a7` (Vollsicherungen `backups/20261002-092637`
+  und `-092647`). Regression auf godelmann-prod **2/2 gruen**; auf test mit der Endfassung **4/4 gruen**.
+- **Im Browser auf der Salient-Vorschau (prod-Widget):** Preisfrage ohne Betrag, mit Angebot „Postleitzahl in den Chat";
+  Postleitzahl → Innendienst; „2026" geht ans Modell (nicht an die PLZ-Suche); Manipulationsversuch → „Dabei kann ich
+  Ihnen nicht helfen …"; Zwischenstatus nach 5 s / 14 s sichtbar; Englisch mit „Sources:".
+- **Protokoll:** `webchat_messages.modell` wird jetzt gefuellt (Caddy `.bot`: `x-model-used` in Expose-Headers);
+  abgewiesene Eingaben stehen als `blocked` in `ai_logs.db`.
+- **Caddy prod (Sicherung `/etc/caddy/Caddyfile.bak-20261002`):** `chatbot.godelmann.net` hat jetzt dasselbe
+  `@apifremd`-Gate wie `.bot` (fremder Origin → 403; erlaubt godelmann.de/.com/.net/.bot + Salient-Vorschau, ohne Origin
+  frei). Reload nur per `caddy reload --config … --adapter caddyfile` (die Unit hat kein ExecReload).
+- **`EVAL_READ_TOKEN`** auf prod gesetzt (Wert nur auf dem Server: `grep ^EVAL_READ_TOKEN /opt/godelmann-chatbot/.env`).
+- **Tempo:** Antworten ~900 Zeichen, Zwischenstatus. Eine Suchrunden-Begrenzung wurde getestet und **zurueckgenommen**
+  (Regression „Mehrsteinsysteme mit Versickerung" ohne KLIMASTEIN in 2 von 6 Laeufen). Messung: ~8 s je Suchrunde;
+  prod nach der Aenderung 10–30 s. Offen: fliessende Ausgabe bis zum Besucher (1–2 Tage), Modellvergleich auf Tempo.
+- **Offen fuer 0.0.29:** Zwischenstatus fuer Screenreader (`role=status`), ESC am Dokument + Scroll-Sperre bei `dim`,
+  Sprachwechsel mitten im Gespraech, `calc(100dvh - 120px)` im schwebenden Modus, Fehler-Protokollzeile mit
+  Fallback-Fehler, Stream-Zweig bei `content_blocked` angleichen.
 
 ## Release 0.0.28 (2026-10-02) — Postleitzahl im Freitext fuehrt zum Ansprechpartner (alle Zielgruppen)
 
