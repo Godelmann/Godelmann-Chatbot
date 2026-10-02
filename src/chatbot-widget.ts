@@ -2901,6 +2901,17 @@ export class GodelmannChatbot extends HTMLElement {
 
   // --- Chat-Request (POST /api/chat, SSE) -----------------------------------
 
+  /** Hat die juengste Assistent-Nachricht die Postleitzahl-Eingabe angeboten?
+   *  (de „Postleitzahl", en „postcode"/„postal code", cs „PSČ"/„směrovací") */
+  private letzteAntwortBietetPlzAn(): boolean {
+    for (let i = this.messages.length - 1; i >= 0; i--) {
+      const m = this.messages[i];
+      if (m.role !== 'assistant') continue;
+      return /postleitzahl|post\s?code|postal code|psč|směrovací/i.test(m.text ?? '');
+    }
+    return false;
+  }
+
   private async submitInput(): Promise<void> {
     const text = this.input.value.trim();
     if (text === '' || this.busy) return;
@@ -2921,8 +2932,11 @@ export class GodelmannChatbot extends HTMLElement {
     // Schaltflaeche „Ansprechpartner finden", die nur der Fachkunden-Zweig
     // zeigt — Privatkunden liefen ins Leere (Befund Livegang-Test 02.10.2026).
     // Bewusst eng: nur eine nackte 4-/5-stellige PLZ, optional mit Land-Praefix
-    // ("AT-1010", "CH 8000"). Alles andere geht wie bisher an das Modell.
-    if (istNacktePlz(text)) {
+    // ("AT-1010"), UND nur wenn die letzte Antwort des Beraters die Postleitzahl
+    // angeboten hat. Ohne diese Bedingung fing die Abkuerzung jede vierstellige
+    // Zahl ab ("2026", Verlegemuster "1613") — Befund der Gegenprobe 02.10.2026.
+    // Alles andere geht wie bisher an das Modell.
+    if (istNacktePlz(text) && this.letzteAntwortBietetPlzAn()) {
       this.appendMessage({ role: 'user', text });
       void this.lookupContact(text);
       return;

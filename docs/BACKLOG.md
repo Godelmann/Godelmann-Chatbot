@@ -6,6 +6,8 @@
 
 - `submitInput`: eine nackte 4-/5-stellige Postleitzahl (optional mit Land-Praefix) loest die deterministische
   Ansprechpartner-Suche (`/api/contact`) aus — bisher nur nach dem Fachkunden-Knopf „Ansprechpartner finden".
+  Nur wenn die letzte Antwort des Beraters die Postleitzahl angeboten hat (sonst wuerde jede vierstellige Zahl
+  wie „2026" oder ein Verlegemuster „1613" abgefangen — Befund der Gegenprobe).
 - Anlass (Livegang-Test 02.10.): der Berater verwies Privatkunden auf eben diese Schaltflaeche, die sie nicht
   sehen. Server-Prompt gleichzeitig umgestellt (spass): „Postleitzahl in den Chat schreiben", **keine Preise**
   mehr nennen (Entscheidung Dietmar 02.10.: bei GODELMANN nie Preise, stattdessen Kontakt zum Vertrieb anbieten —
@@ -13,7 +15,7 @@
   Quellen-Ueberschrift je Sprache.
 - **Zwischenstatus in der wartenden Blase** (nach 4 s „Ich suche in den Produktunterlagen …", nach 13 s „Ich stelle die
   Antwort zusammen …", de/en/cs; rein clientseitig). Messung 02.10.: jede Suchrunde ~8 s, Produktfragen 24–36 s; der
-  Server begrenzt gleichzeitig auf eine Suchrunde mit mehr Treffern und kuerzere Antworten.
+  Server kuerzt gleichzeitig die Antworten (~900 Zeichen); eine Suchrunden-Begrenzung wurde nach der Regression wieder zurueckgenommen.
 
 ## Release 0.0.27 (2026-10-02) — Drawer-Hoehe folgt der sichtbaren Hoehe (iPhone)
 
