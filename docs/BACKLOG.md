@@ -1,6 +1,22 @@
 # Godelmann-Chatbot — BACKLOG
 
-> Stand: 2026-10-02 (Paket-Version **0.0.28 test + PROD** seit 02.10. 11:26 Uhr mit Vollsicherung, Go Dietmar — Postleitzahl im Freitext, Zwischenstatus, Drawer-Hoehe 100dvh, Overlay `dim`; Server spass `5b874a7` test + PROD: keine Preise, Ablehnungstext, lokalisierte Quellen; prod `CHATBOT_RATE_MAX=60`, `EVAL_READ_TOKEN` gesetzt, Origin-Gate auch auf chatbot.godelmann.net; Livegang www.godelmann.de durch Salient: von uns freigegeben 02.10.)
+> Stand: 2026-10-06 (Paket-Version **0.0.29 — nur im Repo, NICHT ausgerollt**: QS-Ereignisse an `POST /api/qs/event`, s. Release 0.0.29; ausgerollt bleibt **0.0.28 test + PROD** seit 02.10. 11:26 Uhr mit Vollsicherung, Go Dietmar — Postleitzahl im Freitext, Zwischenstatus, Drawer-Hoehe 100dvh, Overlay `dim`; Server spass `5b874a7` test + PROD: keine Preise, Ablehnungstext, lokalisierte Quellen; prod `CHATBOT_RATE_MAX=60`, `EVAL_READ_TOKEN` gesetzt, Origin-Gate auch auf chatbot.godelmann.net; Livegang www.godelmann.de durch Salient: von uns freigegeben 02.10.)
+
+## Release 0.0.29 (2026-10-06) — QS-Ereignisse an `POST /api/qs/event` (nur Code, nicht ausgerollt)
+
+- **Neu:** Das Widget meldet drei Ereignisse an `POST /api/qs/event` (Server-Endpunkt wird parallel gebaut,
+  ist noch NICHT ausgerollt — bis dahin laufen die Requests ins Leere und werden still geschluckt).
+  Wire-Format: `{ sitzung_id, locale, hp_website, ereignisse: [{ typ, wert, ts_client }] }`, ein Ereignis je
+  Request, `wert` auf 300 Zeichen gekappt, kein Ereignis vor der Zustimmung (`this.consent`).
+  - `zielgruppe_erkannt` (`fachkunde`|`endkunde`): nur bei Erkennung aus dem Freitext, einmal je Sitzung;
+    der Knopf-Klick bleibt wie bisher eine user-Nachricht der Art `zielgruppe`.
+  - `menue_klick` (Knopf-Label): in `runQuickAction`.
+  - `link_klick`: ein delegierter Klick-Listener im Shadow-Root auf `a[href]` in `.msg.assistant`; Wert =
+    Origin + Pfad ohne Query-String und ohne Fragment, nur http/https (`bereinigeLinkZiel`). Versand sofort
+    per `navigator.sendBeacon` (text/plain-Blob), ersatzweise `fetch` mit `keepalive`; Navigation unveraendert.
+- **Gates:** `npm run build` (tsc + Vite) und `npm run lint` gruen; es gibt keine Testsuite im Repo.
+- **Offen:** Ausrollen erst zusammen mit dem Server-Endpunkt; Browser-Abnahme (Playwright) steht aus.
+  Mittel-/Rechtsklick auf Links („in neuem Tab oeffnen") wird nicht erfasst (nur `click`).
 
 ## Betrieb 02.10.2026 (Abschluss) — Server + Widget 0.0.28 auf PROD, Betriebspunkte erledigt
 

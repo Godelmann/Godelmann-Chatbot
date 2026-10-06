@@ -373,7 +373,9 @@ connect-src ... https://chatbot.godelmann.bot;
 - `connect-src`: **wichtig auch fuer das SSE-Streaming** — die Antworten
   kommen als `text/event-stream` ueber `fetch` von
   `POST {host}/api/chat`; zusaetzlich `GET {host}/altcha/challenge`
-  (Spam-Schutz). Ohne `connect-src`-Freigabe blockt der Browser die
+  (Spam-Schutz) sowie die Qualitaetssicherung `POST {host}/api/qs/transcript`,
+  `/api/qs/feedback` und (ab 0.0.29) `/api/qs/event` — alle auf demselben Host,
+  es ist keine weitere Freigabe noetig. Ohne `connect-src`-Freigabe blockt der Browser die
   Chat-Verbindung, obwohl das Script laedt.
 - `style-src`: Das Widget setzt seine Styles als `<style>`-Element im
   eigenen Shadow DOM — eine CSP wirkt auch dort. Unter einer strikten CSP

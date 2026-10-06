@@ -849,6 +849,24 @@ const ENDKUNDE_KW = ['terrasse', 'garten', 'einfahrt', 'gestaltung', 'ideen', 'h
 
 /** Nackte Postleitzahl (4 oder 5 Ziffern), optional mit Laenderkuerzel davor:
  *  "92269", "AT-1010", "CH 8000". Kein Fliesstext, keine Hausnummern-Saetze. */
+/** Ziel eines angeklickten Links fuer das QS-Ereignis `link_klick` (seit
+ *  0.0.29): absolute Adresse OHNE Query-String und OHNE Fragment (dort
+ *  koennten personenbezogene Angaben stehen), nur http/https — mailto:, tel:,
+ *  javascript: usw. ergeben null. Auf 300 Zeichen gekappt. */
+export function bereinigeLinkZiel(href: string, basis: string): string | null {
+  try {
+    const u = new URL(href, basis);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return (u.origin + u.pathname).slice(0, QS_EVENT_WERT_MAX);
+  } catch {
+    return null;
+  }
+}
+
+/** Hoechstlaenge von `wert` in einem QS-Ereignis. */
+const QS_EVENT_WERT_MAX = 300;
+type QsEventTyp = 'zielgruppe_erkannt' | 'menue_klick' | 'link_klick';
+
 export function istNacktePlz(text: string): boolean {
   return /^(?:[A-Za-z]{1,2}[ -]?)?\d{4,5}$/.test(text.trim());
 }
@@ -1570,6 +1588,9 @@ export class GodelmannChatbot extends HTMLElement {
   /** QS-Sitzungs-ID fuer /api/qs/* — je Unterhaltung; "Neue Unterhaltung"
    *  vergibt eine frische, restoreSession holt die alte zurueck. */
   private sitzungId = '';
+  /** Sitzung, fuer die `zielgruppe_erkannt` schon gemeldet wurde (einmal je
+   *  Sitzung; nur Laufzeit). */
+  private zielgruppeGemeldetFuer = '';
   /** Transcript-Melder: fertige, noch nicht gemeldete Nachrichten (Debounce 2 s). */
   private qsQueue: MessageEntry[] = [];
   private qsTimer: number | null = null;
@@ -2020,6 +2041,17 @@ export class GodelmannChatbot extends HTMLElement {
     this.messagesEl = document.createElement('div');
     this.messagesEl.className = 'messages';
     this.messagesEl.setAttribute('aria-live', 'polite');
+    // QS-Ereignis link_klick: EIN delegierter Listener im Shadow-Root fuer
+    // Links in Assistent-Nachrichten. Kein preventDefault — die Navigation
+    // laeuft unveraendert; gesendet wird sofort (Beacon/keepalive).
+    this.root.addEventListener('click', (e) => {
+      const ziel = e.target;
+      if (!(ziel instanceof Element)) return;
+      const a = ziel.closest('a[href]');
+      if (!a || !a.closest('.msg.assistant')) return;
+      const wert = bereinigeLinkZiel(a.getAttribute('href') ?? '', location.href);
+      if (wert) this.sendQsEvent('link_klick', wert, true);
+    });
 
     // Eingabe: Feld + Flieger IM Feld, darunter zwei Hinweiszeilen.
     this.form = document.createElement('form');
@@ -2665,6 +2697,7 @@ export class GodelmannChatbot extends HTMLElement {
 
   private runQuickAction(a: QuickAction): void {
     if (this.busy) return;
+    this.sendQsEvent('menue_klick', a.label, false);
     this.clearSuggestions();
     if (a.special === 'plz') {
       // Fachkunde-Ansprechpartner: PLZ erfragen -> /api/contact (deterministisch).
@@ -2948,7 +2981,15 @@ export class GodelmannChatbot extends HTMLElement {
     // afterModelAnswer), statt stumm 'endkunde' anzunehmen.
     if (this.stage === 'greeting') {
       const erkannt = classifyBranch(text);
-      if (erkannt) this.stage = erkannt;
+      if (erkannt) {
+        this.stage = erkannt;
+        // QS-Ereignis: Zielgruppe aus dem FREITEXT erkannt (nicht Knopf-Klick).
+        if (this.sitzungId === '') this.sitzungId = uuid();
+        if (this.zielgruppeGemeldetFuer !== this.sitzungId) {
+          this.zielgruppeGemeldetFuer = this.sitzungId;
+          this.sendQsEvent('zielgruppe_erkannt', erkannt, false);
+        }
+      }
     }
 
     await this.startChat(text);
@@ -3780,6 +3821,39 @@ export class GodelmannChatbot extends HTMLElement {
     }
     this.fbTimers.clear();
     this.flushQs(beacon);
+  }
+
+  /** POST /api/qs/event (seit 0.0.29) — fire-and-forget, Fehler werden still
+   *  geschluckt. Gate wie beim Transcript: erst NACH der Zustimmung zu den
+   *  Nutzungsbedingungen. Ein Ereignis je Request (Server-Grenze: 20).
+   *  `sofort` = der Klick kann die Seite verlassen: sendBeacon, ersatzweise
+   *  fetch mit keepalive — sonst ginge der Request beim Seitenwechsel verloren. */
+  private sendQsEvent(typ: QsEventTyp, wert: string, sofort: boolean): void {
+    try {
+      if (!this.consent) return;
+      if (this.sitzungId === '') this.sitzungId = uuid();
+      const json = JSON.stringify({
+        sitzung_id: this.sitzungId,
+        locale: this.lang || this.langKey,
+        hp_website: '',
+        ereignisse: [{ typ, wert: wert.slice(0, QS_EVENT_WERT_MAX), ts_client: new Date().toISOString() }],
+      });
+      if (!sofort) {
+        this.postQs('event', json, false);
+        return;
+      }
+      const url = `${this.apiBase}/api/qs/event`;
+      if (typeof navigator.sendBeacon === 'function'
+        && navigator.sendBeacon(url, new Blob([json], { type: 'text/plain' }))) return;
+      void fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: json,
+        keepalive: true,
+      }).catch(() => { /* fire-and-forget */ });
+    } catch {
+      /* Ereignisse duerfen den Chat nie stoeren */
+    }
   }
 
   /** Transport fuer POST /api/qs/<pfad>: fetch (normal) bzw. sendBeacon
